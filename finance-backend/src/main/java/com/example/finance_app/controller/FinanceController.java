@@ -20,6 +20,7 @@ import com.example.finance_app.dto.request.CategoriesRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
+import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.service.FinanceService;
@@ -89,6 +90,18 @@ public class FinanceController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+        }
+    }
+
+    // Get list Transaction
+    @PostMapping("/transactions/list")
+    public ResponseEntity<?> getTransactionList(@RequestBody Map<String, Long> payload) {
+        try {
+            Long userId = payload.get("userId");
+            List<TransactionListResponse> result = financeService.getListTransaction(userId);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 

@@ -2,9 +2,9 @@ package com.example.finance_app.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Service;
 
 import com.example.finance_app.dto.request.CategoriesRequest;
@@ -12,6 +12,7 @@ import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
 import com.example.finance_app.dto.response.AuthResponse;
+import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
@@ -143,6 +144,27 @@ public class FinanceService {
         }
 
         return transactionRepository.save(existingTransaction);
+    }
+
+    // Get list Transaction
+    public List<TransactionListResponse> getListTransaction(Long userId) {
+
+        List<Transaction> transactions = transactionRepository.findAllActiveTransactionsByUserId(userId);
+
+        return transactions.stream().map(t -> {
+            TransactionListResponse response = new TransactionListResponse();
+            response.setId(t.getId());
+            response.setAmount(t.getAmount());
+            response.setDescription(t.getDescription());
+            response.setTransactionDate(t.getTransactionDate());
+
+            if (t.getCategoryId() != null) {
+                response.setCategoryId(t.getCategoryId().getId());
+                response.setCategoryName(t.getCategoryId().getName());
+                response.setCategoryType(t.getCategoryId().getType());
+            }
+            return response;
+        }).collect(Collectors.toList());
     }
 
     // ======================= Categories Service =======================

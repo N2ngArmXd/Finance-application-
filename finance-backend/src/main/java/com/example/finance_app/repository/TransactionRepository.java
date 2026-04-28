@@ -23,4 +23,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query(value = "UPDATE transactions SET is_deleted = true WHERE id = :id AND user_id = :userId", nativeQuery = true)
     int deleteTransactionById(@Param("id") Long id, @Param("userId") Long userId);
 
+    // Get list Transaction
+    @Query("SELECT t FROM Transaction t " +
+            "JOIN FETCH t.categoryId c " +
+            "WHERE t.userId.id = :userId " +
+            "AND t.isDeleted = false " +
+            "ORDER BY t.transactionDate DESC")
+    List<Transaction> findAllActiveTransactionsByUserId(@Param("userId") Long userId);
 }
