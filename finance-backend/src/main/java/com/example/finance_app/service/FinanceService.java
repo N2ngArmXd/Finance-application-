@@ -80,6 +80,11 @@ public class FinanceService {
 
     // ====================== Transaction Service ======================
 
+    public List<Transaction> getActiveTransactions() {
+        Long currentUserId = 1L;
+        return transactionRepository.findActiveByUserId(currentUserId);
+    }
+
     // Create Transaction
     public Transaction createTransaction(TransactionRequest request) {
 
@@ -117,12 +122,36 @@ public class FinanceService {
         // NOTE: ลบรายการแล้ว Count ยอดเงินใหม่
     }
 
-    public List<Transaction> getActiveTransactions() {
-        Long currentUserId = 1L;
-        return transactionRepository.findActiveByUserId(currentUserId);
+    // Update Transaction
+    @Transactional
+    public Transaction updateTransaction(Long id, Transaction updateData) {
+
+        Transaction existingTransaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("ไม่พบรายการธุรกรรมดังกล่าว"));
+
+        if (existingTransaction.isDeleted()) {
+            throw new RuntimeException("ไม่สามารถแก้ไขรายการที่ลบไปแล้ว");
+        }
+
+        existingTransaction.setUserId(updateData.getUserId());
+        existingTransaction.setAmount(updateData.getAmount());
+        existingTransaction.setDescription(updateData.getDescription());
+        existingTransaction.setTransactionDate(LocalDateTime.now());
+
+        if (updateData.getCategoryId() != null) {
+            existingTransaction.setCategoryId(updateData.getCategoryId());
+        }
+
+        return transactionRepository.save(existingTransaction);
     }
 
     // ======================= Categories Service =======================
+
+    public List<Categories> getMyCategories() {
+        Long currentUserId = 1L;
+        return categoriesRepository.findByUserId(currentUserId);
+    }
+
     @Transactional
     public Categories createdCategoriesByUserId(CategoriesRequest request) {
 
@@ -141,9 +170,14 @@ public class FinanceService {
         return categoriesRepository.save(categories);
     }
 
-    public List<Categories> getMyCategories() {
-        Long currentUserId = 1L;
-        return categoriesRepository.findByUserId(currentUserId);
+    @Transactional
+    public void deleteCategories(Long id) {
+
+        Categories categories = categoriesRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่ดังกล่าว ID: " + id));
+
+        categories.setDeleted(true);
+        categoriesRepository.save(categories);
     }
 
 }
