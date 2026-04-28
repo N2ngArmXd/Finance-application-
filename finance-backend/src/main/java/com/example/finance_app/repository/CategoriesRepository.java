@@ -1,6 +1,7 @@
 package com.example.finance_app.repository;
 
 import java.util.List;
+import java.util.Locale.Category;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -27,5 +28,9 @@ public interface CategoriesRepository extends JpaRepository<Categories, Long> {
     @Transactional
     @Query(value = "DELETE FROM categories WHERE id = :id AND user_id = :userId", nativeQuery = true)
     void deleteByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+    // Find all Categories where isDeleted is false
+    @Query("SELECT c FROM Categories c WHERE c.isDeleted = false ORDER BY c.name ASC")
+    List<Categories> findAllActiveCategories();
 
 }

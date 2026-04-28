@@ -3,6 +3,7 @@ package com.example.finance_app.controller;
 import com.example.finance_app.repository.CategoriesRepository;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -77,16 +78,42 @@ public class FinanceController {
         }
     }
 
+    // Update Transaction
+    @PostMapping("/transaction/update")
+    public ResponseEntity<?> updateTransaction(@RequestBody Transaction updateData) {
+        try {
+            Transaction result = financeService.updateTransaction(updateData.getId(), updateData);
+
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ");
+        }
+    }
+
     // ===================== Categories Controller =====================
+
+    @GetMapping
+    public ResponseEntity<List<Categories>> getAllMyCategories() {
+        return ResponseEntity.ok(financeService.getMyCategories());
+    }
 
     @PostMapping("/add/categories")
     public ResponseEntity<Categories> createCategoriesById(@RequestBody CategoriesRequest request) {
         return ResponseEntity.ok(financeService.createdCategoriesByUserId(request));
     }
 
-    @GetMapping
-    public ResponseEntity<List<Categories>> getAllMyCategories() {
-        return ResponseEntity.ok(financeService.getMyCategories());
+    @PostMapping("/categories/delete")
+    public ResponseEntity<String> deleteCategories(@RequestBody Map<String, Long> payload) {
+        try {
+            Long id = payload.get("id");
+
+            financeService.deleteCategories(id);
+            return ResponseEntity.ok("ลบหมวดหมู่เรียบร้อยแล้ว");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
 }
