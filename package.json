@@ -5,7 +5,7 @@
   "scripts": {
     "backend": "cd finance-backend && mvn spring-boot:run",
     "frontend": "cd finance-frontend && npm run dev",
-    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+    "dev": "npx concurrently \"npm run backend\" \"npm run frontend\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
