@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.CategoriesRequest;
@@ -107,9 +108,11 @@ public class FinanceController {
 
     // ===================== Categories Controller =====================
 
-    @GetMapping
-    public ResponseEntity<List<Categories>> getAllMyCategories() {
-        return ResponseEntity.ok(financeService.getMyCategories());
+    @PostMapping("/categories/getCategoriesList")
+    @ResponseBody
+    public ResponseEntity<List<Categories>> getCategoriesList() {
+        List<Categories> categories = financeService.getMyCategories();
+        return ResponseEntity.ok(categories);
     }
 
     @PostMapping("/add/categories")
