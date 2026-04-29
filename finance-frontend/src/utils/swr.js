@@ -20,7 +20,7 @@ export const showSuccess = (title, text) => {
         icon: 'success',
         title: `<span class="text-slate-800 font-black">${title || 'สำเร็จ!'}</span>`,
         text: text,
-        iconColor: '#4F46E5', // สี Indigo-600
+        iconColor: '#4F46E5',
         confirmButtonText: 'ตกลง',
         customClass: {
             popup: 'rounded-[2rem] p-8',
