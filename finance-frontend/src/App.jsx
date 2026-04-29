@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
 import TransactionPage from './components/TransactionPage';
+import HistoryPage from './components/HIstoryPage';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -63,6 +64,9 @@ function App() {
 
           {activePage === 'transaction' && (
             <TransactionPage userId={user.id} />
+          )}
+          {activePage === 'history' && (
+            <HistoryPage userId={user.id} />
           )}
         </main>
       </div>

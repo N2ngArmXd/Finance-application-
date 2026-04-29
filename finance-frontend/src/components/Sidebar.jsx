@@ -5,6 +5,7 @@ import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet } from '
 export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage }) {
     const menuItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={22} />, label: 'หน้าหลัก' },
+        { id: 'history', icon: <Wallet size={22} />, label: 'ประวัติธุรกรรม' },
         { id: 'transaction', icon: <PlusCircle size={22} />, label: 'บันทึกรายรับรายจ่าย' },
     ];
 
