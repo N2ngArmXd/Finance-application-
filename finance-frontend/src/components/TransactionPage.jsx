@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { showAddCategoryModal } from '../utils/categorySwal';
 import { showSuccess, showError } from '../utils/swr';
-import { Save, DollarSign, FileText, Tag, ArrowUpCircle, ArrowDownCircle, Loader2 } from 'lucide-react';
+import { Save, DollarSign, FileText, Tag, ArrowUpCircle, ArrowDownCircle, Loader2, Plus } from 'lucide-react';
 
 export default function TransactionPage({ userId }) {
     const [categories, setCategories] = useState([]); // สำหรับเก็บข้อมูลจาก API
@@ -14,24 +15,26 @@ export default function TransactionPage({ userId }) {
         description: ''
     });
 
+    const fetchCategories = async () => {
+        setFetching(true);
+        try {
+            const response = await fetch('/api/finance-app/categories/getCategoriesList', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCategories(data);
+            }
+        } catch (error) {
+            console.error("Fetch categories error: ", error);
+        } finally {
+            setFetching(false);
+        }
+    }
+
     // 1. ดึงข้อมูล Categories จาก API ทันทีที่เข้าหน้า
     useEffect(() => {
-        const fetchCategories = async () => {
-            try {
-                const response = await fetch('/api/finance-app/categories/getCategoriesList', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setCategories(data);
-                }
-            } catch (error) {
-                console.error("Fetch categories error:", error);
-            } finally {
-                setFetching(false);
-            }
-        };
         fetchCategories();
     }, []);
 
@@ -95,23 +98,33 @@ export default function TransactionPage({ userId }) {
 
                     {/* หมวดหมู่ (Dynamic จาก API) */}
                     <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <Tag size={18} className="text-indigo-500" /> หมวดหมู่
+                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
+                            <span className="flex items-center gap-2">
+                                <Tag size={18} className="text-indigo-500" /> หมวดหมู่
+                            </span>
                         </label>
-                        <div className="relative">
+
+                        <div className="flex gap-2"> {/* ใช้ flex เพื่อวางปุ่มต่อท้าย */}
                             <select
                                 required
-                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none appearance-none disabled:opacity-50"
+                                className="flex-1 p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
                                 value={formData.categoryId}
                                 onChange={handleCategoryChange}
-                                disabled={fetching}
                             >
-                                <option value="">{fetching ? 'กำลังโหลด...' : 'เลือกหมวดหมู่'}</option>
+                                <option value="">เลือกหมวดหมู่</option>
                                 {categories.map(cat => (
                                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                                 ))}
                             </select>
-                            {fetching && <Loader2 className="absolute right-4 top-4 animate-spin text-slate-400" size={20} />}
+
+                            {/* ปุ่มเครื่องหมายบวก */}
+                            <button
+                                type="button"
+                                onClick={() => showAddCategoryModal(fetchCategories)}
+                                className="p-4 bg-indigo-100 text-indigo-600 rounded-2xl hover:bg-indigo-200 transition-colors"
+                            >
+                                <Plus size={24} />
+                            </button>
                         </div>
                     </div>
 
