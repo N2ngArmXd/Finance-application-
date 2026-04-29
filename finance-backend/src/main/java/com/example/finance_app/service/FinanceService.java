@@ -34,33 +34,6 @@ public class FinanceService {
     @Autowired
     private CategoriesRepository categoriesRepository;
 
-    // ====================== Register Service ======================
-    @Transactional
-    public AuthResponse registerUser(RegisterRequest request) {
-
-        if (usersRepository.existsByUsername(request.getUsername()) > 0) {
-            throw new RuntimeException("Username นี้ถูกใช้งานแล้ว");
-        }
-
-        Users user = new Users();
-
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
-        user.setEmail(request.getEmail());
-        user.setCreatedAt(LocalDateTime.now());
-
-        Users savedUser = usersRepository.save(user);
-
-        AuthResponse response = new AuthResponse();
-        response.setId(savedUser.getId());
-        response.setUsername(savedUser.getUsername());
-        response.setEmail(savedUser.getEmail());
-        response.setMessage("ลงทะเบียนสำเร็จ");
-
-        return response;
-
-    }
-
     // ====================== Login Service ======================
     @Transactional
     public AuthResponse login(LoginRequest req) {
