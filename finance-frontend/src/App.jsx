@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Login from './components/Login';
+import RegisterForm from './components/RegisterForm';
 import TransactionPage from './components/TransactionPage';
 import HistoryPage from './components/HIstoryPage';
 
 function App() {
   const [user, setUser] = useState(null);
+  const [isRegistering, setIsRegistering] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('dashboard');
 
@@ -25,7 +27,10 @@ function App() {
   };
 
   if (!user) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+    if (isRegistering) {
+      return <RegisterForm onGoToLogin={() => setIsRegistering(false)} />;
+    }
+    return <Login onLoginSuccess={handleLoginSuccess} onGoToRegister={() => setIsRegistering(true)} />;
   }
 
   return (

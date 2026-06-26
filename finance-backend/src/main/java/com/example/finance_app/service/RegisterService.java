@@ -2,6 +2,7 @@ package com.example.finance_app.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.concurrent.ThreadLocalRandom;
 
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.entity.Users;
@@ -20,6 +21,7 @@ public class RegisterService {
     public Long registerStep1(RegisterRequest request) {
 
         Users user = new Users();
+        user.setId(generateUnique13DigitId());
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
         user.setEmail(request.getEmail());
@@ -27,6 +29,14 @@ public class RegisterService {
         Users savedUser = userRepository.save(user);
 
         return savedUser.getId();
+    }
+
+    private Long generateUnique13DigitId() {
+        Long newId;
+        do {
+            newId = ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
+        } while (userRepository.existsById(newId));
+        return newId;
     }
 
     // Step 2 : ข้อมูลส่วนตัว
