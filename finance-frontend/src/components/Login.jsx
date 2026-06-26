@@ -23,11 +23,16 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                 onLoginSuccess(userData);
             } else {
                 const errorText = await response.text();
+                // ถ้าเป็น Error จากฝั่ง Server (500) ให้ Throw ออกไปเพื่อให้ ErrorBoundary (ErrorDebug) ดักจับ
+                if (response.status >= 500) {
+                    throw new Error(`Server Error (${response.status}): ${errorText}`);
+                }
                 setError(errorText || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
             }
         } catch (err) {
             console.error("Login Error:", err);
-            setError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+            // โยน Error ออกไปให้ Global Listener (ErrorDebug) ทำงาน แทนที่จะโชว์แค่ข้อความเล็กๆ
+            throw err;
         }
     };
 
@@ -74,7 +79,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                 </div>
 
                 {/* Form Wrapper - จัดกลางและจำกัดความกว้าง */}
-                <div className="w-full max-w-sm">
+                <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-100 border border-slate-100">
                     <div className="mb-10">
                         <h2 className="text-3xl font-black text-slate-800">เข้าสู่ระบบ</h2>
                         <p className="text-slate-400 text-base mt-1.5">กรอกข้อมูลเพื่อเข้าสู่บัญชีของคุณ</p>

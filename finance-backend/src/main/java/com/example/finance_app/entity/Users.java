@@ -13,11 +13,10 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "users", schema = "\"finance-app\"")
+@Table(name = "users_register", schema = "finance-app")
 public class Users {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     // username and password
