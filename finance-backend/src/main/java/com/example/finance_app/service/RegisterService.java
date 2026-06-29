@@ -21,7 +21,7 @@ public class RegisterService {
     public Long registerStep1(RegisterRequest request) {
 
         Users user = new Users();
-        user.setId(generateUnique13DigitId());
+        user.setId(generateUnique6DigitId());
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
         user.setEmail(request.getEmail());
@@ -31,10 +31,10 @@ public class RegisterService {
         return savedUser.getId();
     }
 
-    private Long generateUnique13DigitId() {
+    private Long generateUnique6DigitId() {
         Long newId;
         do {
-            newId = ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
+            newId = ThreadLocalRandom.current().nextLong(100000L, 1000000L);
         } while (userRepository.existsById(newId));
         return newId;
     }

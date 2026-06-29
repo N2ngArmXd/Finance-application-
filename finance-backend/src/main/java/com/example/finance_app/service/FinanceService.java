@@ -55,8 +55,9 @@ public class FinanceService {
     // ====================== Transaction Service ======================
 
     public List<Transaction> getActiveTransactions() {
-        Long currentUserId = 1L;
-        return transactionRepository.findActiveByUserId(currentUserId);
+        Users user = usersRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
+        return transactionRepository.findActiveByUserId(user.getId());
     }
 
     // Create Transaction
@@ -85,9 +86,10 @@ public class FinanceService {
     @Transactional
     public void deleteTrasaction(Long id) {
 
-        Long currentUserId = 1L;
+        Users user = usersRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
 
-        int result = transactionRepository.deleteTransactionById(id, currentUserId);
+        int result = transactionRepository.deleteTransactionById(id, user.getId());
 
         if (result == 0) {
             throw new RuntimeException("ไม่สามารถดำเนินการได้: หาไม่พบ หรือไม่มีสิทธิ์");
@@ -143,17 +145,19 @@ public class FinanceService {
     // ======================= Categories Service =======================
 
     public List<Categories> getMyCategories() {
-        Long currentUserId = 1L;
-        return categoriesRepository.findByUserId(currentUserId);
+        // หา User คนแรกจากฐานข้อมูล
+        Users users = usersRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
+
+        return categoriesRepository.findByUserId(users.getId());
     }
 
     @Transactional
     public Categories createdCategoriesByUserId(CategoriesRequest request) {
 
-        Long currentUserId = 1L;
-
-        Users users = usersRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
+        // หา User คนแรกจากฐานข้อมูล
+        Users users = usersRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
 
         Categories categories = new Categories();
 
