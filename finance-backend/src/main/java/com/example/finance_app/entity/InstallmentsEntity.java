@@ -49,6 +49,10 @@ public class InstallmentsEntity {
     @Column(name = "status", length = 50)
     private String status = "ACTIVE";
 
+    // งวดที่ผู้ใช้กดยืนยันว่าจ่ายแล้ว เก็บเป็นเลขงวดคั่นด้วยจุลภาค เช่น "1,2,3"
+    @Column(name = "paid_periods", columnDefinition = "TEXT")
+    private String paidPeriods;
+
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
@@ -142,6 +146,14 @@ public class InstallmentsEntity {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getPaidPeriods() {
+        return paidPeriods;
+    }
+
+    public void setPaidPeriods(String paidPeriods) {
+        this.paidPeriods = paidPeriods;
     }
 
     public LocalDate getStartDate() {

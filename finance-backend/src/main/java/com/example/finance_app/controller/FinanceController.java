@@ -128,4 +128,18 @@ public class FinanceController {
         }
     }
 
+    @PostMapping("installments/pay-period")
+    public ResponseEntity<?> payInstallmentPeriod(@RequestBody Map<String, Object> payload) {
+        try {
+            Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
+            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
+            int period = Integer.parseInt(payload.get("period").toString());
+            boolean paid = payload.get("paid") == null || Boolean.parseBoolean(payload.get("paid").toString());
+            InstallmentsEntity result = financeService.updatePaidPeriod(installmentsId, userId, period, paid);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
 }

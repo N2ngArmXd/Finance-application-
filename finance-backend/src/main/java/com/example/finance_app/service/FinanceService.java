@@ -5,6 +5,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -286,6 +287,48 @@ public class FinanceService {
 
     public List<InstallmentsEntity> getListInstallments(Long userId) {
         return installmentsRepository.findByUserId(userId);
+    }
+
+    // ยืนยัน/ยกเลิกการจ่ายรายงวด — เก็บเลขงวดที่จ่ายแล้วในคอลัมน์ paid_periods
+    @Transactional
+    public InstallmentsEntity updatePaidPeriod(Long installmentsId, Long userId, int period, boolean paid) {
+        InstallmentsEntity item = installmentsRepository.findById(installmentsId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายการผ่อนชำระ"));
+
+        if (userId != null && !userId.equals(item.getUserId())) {
+            throw new IllegalArgumentException("ไม่มีสิทธิ์แก้ไขรายการนี้");
+        }
+        if (period < 1 || period > item.getInstallmentMonths()) {
+            throw new IllegalArgumentException("งวดที่ระบุไม่ถูกต้อง");
+        }
+
+        TreeSet<Integer> periods = new TreeSet<>();
+        if (item.getPaidPeriods() != null && !item.getPaidPeriods().isBlank()) {
+            for (String part : item.getPaidPeriods().split(",")) {
+                String trimmed = part.trim();
+                if (!trimmed.isEmpty()) {
+                    periods.add(Integer.parseInt(trimmed));
+                }
+            }
+        }
+
+        if (paid) {
+            periods.add(period);
+        } else {
+            periods.remove(period);
+        }
+
+        String joined = periods.stream().map(String::valueOf).collect(Collectors.joining(","));
+        item.setPaidPeriods(joined.isEmpty() ? null : joined);
+
+        // ปรับสถานะรายการให้สอดคล้องกับจำนวนงวดที่จ่ายครบ
+        if (periods.size() >= item.getInstallmentMonths()) {
+            item.setStatus("COMPLETED");
+        } else if ("COMPLETED".equals(item.getStatus())) {
+            item.setStatus("ACTIVE");
+        }
+
+        return installmentsRepository.save(item);
     }
 
 }
