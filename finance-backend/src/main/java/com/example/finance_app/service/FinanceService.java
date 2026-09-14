@@ -1,5 +1,8 @@
 package com.example.finance_app.service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,15 +11,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.example.finance_app.dto.request.CategoriesRequest;
+import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
 import com.example.finance_app.dto.response.AuthResponse;
 import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Categories;
+import com.example.finance_app.entity.InstallmentsEntity;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.CategoriesRepository;
+import com.example.finance_app.repository.InstallmentsRepository;
 import com.example.finance_app.repository.TransactionRepository;
 import com.example.finance_app.repository.UsersRepository;
 
@@ -27,12 +33,12 @@ public class FinanceService {
 
     @Autowired
     private UsersRepository usersRepository;
-
     @Autowired
     private TransactionRepository transactionRepository;
-
     @Autowired
     private CategoriesRepository categoriesRepository;
+    @Autowired
+    private InstallmentsRepository installmentsRepository;
 
     // ====================== Login Service ======================
     @Transactional
@@ -177,6 +183,71 @@ public class FinanceService {
 
         categories.setDeleted(true);
         categoriesRepository.save(categories);
+    }
+
+    // ======================= Installsments Service =======================
+
+    @Transactional
+    public InstallmentsEntity createdInstallments(InstallmentsRequest request) {
+
+        if (request.getTotalAmount() == null || request.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("ยอดรวมต้องมากกว่า 0 บาทนะจ๊ะน้อง");
+        }
+        if (request.getInstallmentMonths() == null || request.getInstallmentMonths() <= 0) {
+            throw new IllegalArgumentException("จำนวนเดือนต้องมากกว่า 0 เดือนนะจ๊ะ");
+        }
+
+        BigDecimal actualInterestRate = (request.getInterestRate() != null)
+                ? request.getInterestRate()
+                : BigDecimal.ZERO;
+
+        String type = (request.getInterestType() != null) ? request.getInterestType().toUpperCase() : "YEARLY";
+
+        BigDecimal finalMonthlyAmount = request.getMonthlyAmount();
+
+        // Interest Rate 
+        if (finalMonthlyAmount == null || finalMonthlyAmount.compareTo(BigDecimal.ZERO) <= 0) {
+
+            BigDecimal principalPerMonth = request.getTotalAmount()
+                    .divide(new BigDecimal(request.getInstallmentMonths()), 2, RoundingMode.HALF_UP);
+
+            BigDecimal interestPerMonth;
+
+            if ("YEARLY".equals(type)) {
+                interestPerMonth = request.getTotalAmount().multiply(actualInterestRate)
+                        .divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP)
+                        .divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
+            } else {
+                interestPerMonth = request.getTotalAmount().multiply(actualInterestRate)
+                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+            }
+
+            finalMonthlyAmount = principalPerMonth.add(interestPerMonth);
+        }
+
+        InstallmentsEntity installments = new InstallmentsEntity();
+
+        installments.setUserId(request.getUserId());
+        installments.setInstallmentsName(request.getInstallmentsName());
+        installments.setDescription(request.getDescription());
+        installments.setTotalAmount(request.getTotalAmount());
+        installments.setInterestType(type);
+        installments.setInterestRate(actualInterestRate);
+        installments.setInstallmentMonths(request.getInstallmentMonths());
+        installments.setMonthlyAmount(finalMonthlyAmount);
+        installments.setStatus("ACTIVE");
+
+        LocalDate startDate = request.getStartDate() != null ? request.getStartDate() : LocalDate.now();
+        installments.setStartDate(startDate);
+
+        installments.setCreatedAt(LocalDateTime.now());
+
+        return installmentsRepository.save(installments);
+
+    }
+
+    public List<InstallmentsEntity> getListInstallments(Long userId) {
+        return installmentsRepository.findByUserId(userId);
     }
 
 }

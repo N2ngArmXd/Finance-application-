@@ -4,6 +4,7 @@ import Login from './components/Login';
 import RegisterForm from './components/RegisterForm';
 import TransactionPage from './components/TransactionPage';
 import HistoryPage from './components/HIstoryPage';
+import Installments from './components/Installments';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -72,6 +73,9 @@ function App() {
           )}
           {activePage === 'history' && (
             <HistoryPage userId={user.id} />
+          )}
+          {activePage === 'installment' && (
+            <Installments userId={user.id} />
           )}
         </main>
       </div>

@@ -1,12 +1,13 @@
 // src/components/Sidebar.jsx
 import React from 'react';
-import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet, Coins } from 'lucide-react';
 
 export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage }) {
     const menuItems = [
         { id: 'dashboard', icon: <LayoutDashboard size={22} />, label: 'หน้าหลัก' },
         { id: 'history', icon: <Wallet size={22} />, label: 'ประวัติธุรกรรม' },
         { id: 'transaction', icon: <PlusCircle size={22} />, label: 'บันทึกรายธุรกรรม' },
+        { id: 'installment', icon: <Coins size={22} />, label: 'ตารางผ่อนชำระ' },
     ];
 
     return (

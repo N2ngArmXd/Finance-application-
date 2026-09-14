@@ -269,7 +269,7 @@ const HistoryPage = ({ userId }) => {
                             ) : transactions.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
                                     <td className="px-6 py-4 text-slate-600 text-sm">
-                                        {new Date(item.transactionDate).toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: '2-digit' })}
+                                        {new Date(item.transactionDate).toLocaleDateString('th-TH-u-ca-buddhist', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.categoryType === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>

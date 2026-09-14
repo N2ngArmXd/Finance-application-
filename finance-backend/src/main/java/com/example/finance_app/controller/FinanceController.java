@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,13 +18,17 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.CategoriesRequest;
+import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
 import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Categories;
+import com.example.finance_app.entity.InstallmentsEntity;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.service.FinanceService;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("finance-app")
@@ -118,6 +123,25 @@ public class FinanceController {
             financeService.deleteCategories(id);
             return ResponseEntity.ok("ลบหมวดหมู่เรียบร้อยแล้ว");
         } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // ===================== Installments Controller =====================
+
+    @PostMapping("create/installments")
+    public ResponseEntity<InstallmentsEntity> createInstallments(@RequestBody InstallmentsRequest request) {
+        InstallmentsEntity installments = financeService.createdInstallments(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(installments);
+    }
+
+    @PostMapping("installments/list")
+    public ResponseEntity<?> getInstallmentsList(@RequestBody Map<String, Long> payload) {
+        try {
+            Long userId = payload.get("userId");
+            List<InstallmentsEntity> result = financeService.getListInstallments(userId);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
