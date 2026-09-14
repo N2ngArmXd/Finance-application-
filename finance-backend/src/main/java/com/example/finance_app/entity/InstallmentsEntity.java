@@ -49,6 +49,10 @@ public class InstallmentsEntity {
     @Column(name = "status", length = 50)
     private String status = "ACTIVE";
 
+    // soft delete: true = ถูกลบแล้ว (flag delete) — สอดคล้องกับ Transaction/Categories
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
+
     // งวดที่ผู้ใช้กดยืนยันว่าจ่ายแล้ว เก็บเป็นเลขงวดคั่นด้วยจุลภาค เช่น "1,2,3"
     @Column(name = "paid_periods", columnDefinition = "TEXT")
     private String paidPeriods;
@@ -170,6 +174,14 @@ public class InstallmentsEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(boolean isDeleted) {
+        this.isDeleted = isDeleted;
     }
 
 }

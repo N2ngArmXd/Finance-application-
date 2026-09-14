@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, Check, Plus, X } from 'lucide-react';
+import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, Check, Plus, X, Pencil, Trash2 } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
 
 export default function Installments({ userId }) {
@@ -9,9 +9,48 @@ export default function Installments({ userId }) {
     const [expandedId, setExpandedId] = useState(null);
     const [payingKey, setPayingKey] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [editingId, setEditingId] = useState(null); // null = สร้างใหม่, มีค่า = กำลังแก้ไข
+    const [deletingId, setDeletingId] = useState(null);
     const dateInputRef = useRef(null);
 
-    const closeModal = () => setShowModal(false);
+    const emptyForm = {
+        installmentsName: '',
+        description: '',
+        totalAmount: '',
+        interestRate: '',
+        interestType: 'YEARLY',
+        calculationMethod: 'FLAT',
+        installmentMonths: '',
+        startDate: new Date().toISOString().split('T')[0]
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditingId(null);
+    };
+
+    const openCreateModal = () => {
+        setEditingId(null);
+        setFormData(emptyForm);
+        setShowModal(true);
+    };
+
+    const openEditModal = (item) => {
+        setEditingId(item.installmentsId);
+        setFormData({
+            installmentsName: item.installmentsName || '',
+            description: item.description || '',
+            totalAmount: item.totalAmount != null ? String(item.totalAmount) : '',
+            interestRate: item.interestRate != null ? String(item.interestRate) : '',
+            interestType: item.interestType || 'YEARLY',
+            calculationMethod: item.calculationMethod || 'FLAT',
+            installmentMonths: item.installmentMonths != null ? String(item.installmentMonths) : '',
+            startDate: item.startDate
+                ? new Date(item.startDate).toISOString().split('T')[0]
+                : new Date().toISOString().split('T')[0]
+        });
+        setShowModal(true);
+    };
 
     // ปิด modal ด้วยปุ่ม Escape
     useEffect(() => {
@@ -164,6 +203,8 @@ export default function Installments({ userId }) {
             return;
         }
 
+        const isEditing = editingId != null;
+
         // ยืนยันก่อนบันทึกทุกครั้ง
         const methodLabel = formData.calculationMethod === 'EFFECTIVE' ? 'ลดต้นลดดอก' : 'คงที่';
         const summaryHtml = `
@@ -176,7 +217,12 @@ export default function Installments({ userId }) {
                 <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid #e2e8f0;"><span style="color:#94a3b8;">ยอดผ่อนต่อเดือน:</span> <b style="color:#4F46E5;">${formatCurrency(previewMonthlyAmount)}</b></div>
             </div>
         `;
-        const confirmResult = await showConfirm('ยืนยันการบันทึกตารางผ่อน?', '', summaryHtml, 'question');
+        const confirmResult = await showConfirm(
+            isEditing ? 'ยืนยันการแก้ไขตารางผ่อน?' : 'ยืนยันการบันทึกตารางผ่อน?',
+            isEditing ? 'ระบบจะคำนวณยอดผ่อนและตารางใหม่ (งวดที่จ่ายเกินช่วงใหม่จะถูกตัดออก)' : '',
+            summaryHtml,
+            'question'
+        );
         if (!confirmResult.isConfirmed) return;
 
         setLoading(true);
@@ -193,27 +239,25 @@ export default function Installments({ userId }) {
             monthlyAmount: parseFloat(previewMonthlyAmount.toFixed(2)),
             startDate: formData.startDate
         };
+        if (isEditing) {
+            payload.installmentsId = editingId;
+        }
 
         try {
-            const response = await fetch('/api/finance-app/create/installments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
+            const response = await fetch(
+                isEditing ? '/api/finance-app/installments/update' : '/api/finance-app/create/installments',
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                }
+            );
 
             if (response.ok) {
-                showSuccess('บันทึกเรียบร้อย!', 'สร้างตารางผ่อนชำระใหม่แล้ว');
+                showSuccess('บันทึกเรียบร้อย!', isEditing ? 'แก้ไขตารางผ่อนชำระแล้ว' : 'สร้างตารางผ่อนชำระใหม่แล้ว');
                 setShowModal(false);
-                setFormData({
-                    installmentsName: '',
-                    description: '',
-                    totalAmount: '',
-                    interestRate: '',
-                    interestType: 'YEARLY',
-                    calculationMethod: 'FLAT',
-                    installmentMonths: '',
-                    startDate: new Date().toISOString().split('T')[0]
-                });
+                setEditingId(null);
+                setFormData(emptyForm);
                 fetchInstallments(); // Refresh list
             } else {
                 const errorText = await response.text();
@@ -347,6 +391,46 @@ export default function Installments({ userId }) {
         }
     };
 
+    const handleDelete = async (item) => {
+        const paidCount = (item.paidPeriods || '')
+            .split(',')
+            .map((s) => parseInt(s.trim(), 10))
+            .filter((n) => !isNaN(n)).length;
+
+        const detailHtml = `
+            <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
+                <div><span style="color:#94a3b8;">รายการ:</span> <b>${item.installmentsName}</b></div>
+                <div><span style="color:#94a3b8;">ยอดจัด:</span> <b>${formatCurrency(item.totalAmount)}</b></div>
+                <div><span style="color:#94a3b8;">จำนวนงวด:</span> <b>${item.installmentMonths} งวด (จ่ายแล้ว ${paidCount})</b></div>
+            </div>
+        `;
+        const confirmResult = await showConfirm('ยืนยันการลบรายการผ่อน?', 'รายการจะถูกซ่อนออกจากรายการของคุณ', detailHtml, 'warning');
+        if (!confirmResult.isConfirmed) return;
+
+        setDeletingId(item.installmentsId);
+        try {
+            const response = await fetch('/api/finance-app/installments/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ installmentsId: item.installmentsId, userId })
+            });
+
+            if (response.ok) {
+                showSuccess('ลบเรียบร้อย!', 'ลบรายการผ่อนชำระแล้ว');
+                if (expandedId === item.installmentsId) setExpandedId(null);
+                await fetchInstallments();
+            } else {
+                const errorText = await response.text();
+                showError('ลบไม่สำเร็จ', errorText || 'กรุณาลองใหม่อีกครั้ง');
+            }
+        } catch (error) {
+            console.error('Delete installment error:', error);
+            showError('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto space-y-6">
             <h1 className="text-2xl font-black text-slate-800">ตารางผ่อนชำระ</h1>
@@ -362,7 +446,7 @@ export default function Installments({ userId }) {
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between px-6 md:px-8 py-5 border-b border-slate-100 sticky top-0 bg-white z-10 rounded-t-3xl">
-                            <h2 className="text-xl font-bold text-slate-700">สร้างรายการผ่อนใหม่</h2>
+                            <h2 className="text-xl font-bold text-slate-700">{editingId != null ? 'แก้ไขรายการผ่อน' : 'สร้างรายการผ่อนใหม่'}</h2>
                             <button
                                 type="button"
                                 onClick={closeModal}
@@ -546,7 +630,7 @@ export default function Installments({ userId }) {
                                 }`}
                         >
                             <Save size={20} />
-                            {loading ? 'กำลังบันทึก...' : 'บันทึกตารางผ่อนชำระ'}
+                            {loading ? 'กำลังบันทึก...' : (editingId != null ? 'บันทึกการแก้ไข' : 'บันทึกตารางผ่อนชำระ')}
                         </button>
                                 </form>
                             </div>
@@ -597,7 +681,7 @@ export default function Installments({ userId }) {
                     <h2 className="text-xl font-bold text-slate-700">รายการผ่อนชำระของคุณ</h2>
                     <button
                         type="button"
-                        onClick={() => setShowModal(true)}
+                        onClick={openCreateModal}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
                     >
                         <Plus size={18} /> เพิ่มรายการผ่อนใหม่
@@ -630,9 +714,30 @@ export default function Installments({ userId }) {
                                                         </h3>
                                                         <p className="text-xs text-slate-500">เริ่ม: {formatDate(item.startDate)}</p>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className="font-black text-indigo-600">{formatCurrency(item.monthlyAmount)}</div>
-                                                        <div className="text-xs text-slate-500">ต่อเดือน ({item.installmentMonths} งวด)</div>
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="text-right">
+                                                            <div className="font-black text-indigo-600">{formatCurrency(item.monthlyAmount)}</div>
+                                                            <div className="text-xs text-slate-500">ต่อเดือน ({item.installmentMonths} งวด)</div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                                                                title="แก้ไขรายการ"
+                                                                className="p-2 rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                                            >
+                                                                <Pencil size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                disabled={deletingId === item.installmentsId}
+                                                                onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                                                                title="ลบรายการ"
+                                                                className="p-2 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm text-slate-600 bg-slate-50 p-2 rounded-lg mt-3">

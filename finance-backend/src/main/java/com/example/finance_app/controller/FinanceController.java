@@ -128,6 +128,28 @@ public class FinanceController {
         }
     }
 
+    @PostMapping("installments/update")
+    public ResponseEntity<?> updateInstallments(@RequestBody InstallmentsRequest request) {
+        try {
+            InstallmentsEntity result = financeService.updateInstallments(request);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("installments/delete")
+    public ResponseEntity<?> deleteInstallments(@RequestBody Map<String, Object> payload) {
+        try {
+            Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
+            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
+            financeService.softDeleteInstallments(installmentsId, userId);
+            return ResponseEntity.ok("ลบรายการ (Soft Delete) เรียบร้อยแล้ว");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
     @PostMapping("installments/pay-period")
     public ResponseEntity<?> payInstallmentPeriod(@RequestBody Map<String, Object> payload) {
         try {
