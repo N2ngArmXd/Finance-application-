@@ -42,16 +42,21 @@ export const showError = (title, text) => {
     });
 };
 
-export const showConfirm = (title, text) => {
-    return Swal.fire({
-        title: title,
-        text: text,
-        icon: 'warning',
+export const showConfirm = (title, text, html, icon = 'warning') => {
+    return MySwal.fire({
+        title: `<span class="text-slate-800 font-black">${title}</span>`,
+        text: html ? undefined : text,
+        html: html || undefined,
+        icon: icon,
+        iconColor: '#4F46E5',
         showCancelButton: true,
-        confirmButtonColor: '#4F46E5',
-        cancelButtonColor: '#64748b',
         confirmButtonText: 'ยืนยัน',
         cancelButtonText: 'ยกเลิก',
-        reverseButtons: true
+        reverseButtons: true,
+        customClass: {
+            popup: 'rounded-[2rem] p-8',
+            confirmButton: 'bg-indigo-600 text-white hover:bg-indigo-700 px-10 py-3 rounded-xl',
+            cancelButton: 'bg-slate-100 text-slate-600 hover:bg-slate-200 px-10 py-3 rounded-xl'
+        }
     });
 };

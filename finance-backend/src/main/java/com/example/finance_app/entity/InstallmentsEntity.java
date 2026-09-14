@@ -6,8 +6,6 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -15,8 +13,8 @@ import jakarta.persistence.Table;
 @Table(name = "installments", schema = "finance-app")
 public class InstallmentsEntity {
 
+    // id สร้างเองแบบ 14 หลัก: วิธีคิด(1) + DDMMYY(6) + สุ่ม(7) — ดู FinanceService
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "installments_id")
     private Long installmentsId;
 
@@ -34,6 +32,10 @@ public class InstallmentsEntity {
 
     @Column(name = "interest_type", length = 20)
     private String interestType;
+
+    // วิธีคิดดอกเบี้ย: FLAT (คงที่) หรือ EFFECTIVE (ลดต้นลดดอก)
+    @Column(name = "calculation_method", length = 20)
+    private String calculationMethod = "FLAT";
 
     @Column(name = "interest_rate", precision = 5, scale = 2)
     private BigDecimal interestRate;
@@ -100,6 +102,14 @@ public class InstallmentsEntity {
 
     public void setInterestType(String interestType) {
         this.interestType = interestType;
+    }
+
+    public String getCalculationMethod() {
+        return calculationMethod;
+    }
+
+    public void setCalculationMethod(String calculationMethod) {
+        this.calculationMethod = calculationMethod;
     }
 
     public BigDecimal getInterestRate() {

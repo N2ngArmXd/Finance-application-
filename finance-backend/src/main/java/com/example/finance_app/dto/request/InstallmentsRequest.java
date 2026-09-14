@@ -10,6 +10,7 @@ public class InstallmentsRequest {
     private String description;
     private BigDecimal totalAmount;
     private String interestType;
+    private String calculationMethod;
     private BigDecimal interestRate;
     private Integer installmentMonths;
     private BigDecimal monthlyAmount;
@@ -58,6 +59,14 @@ public class InstallmentsRequest {
 
     public void setInterestType(String interestType) {
         this.interestType = interestType;
+    }
+
+    public String getCalculationMethod() {
+        return calculationMethod;
+    }
+
+    public void setCalculationMethod(String calculationMethod) {
+        this.calculationMethod = calculationMethod;
     }
 
     public void setInterestRate(BigDecimal interestRate) {

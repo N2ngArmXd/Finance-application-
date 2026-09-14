@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { showSuccess, showError } from '../utils/swr';
+import { showSuccess, showError, showConfirm } from '../utils/swr';
 import { formatTxnId } from '../utils/format';
 import CategoryIcon from '../utils/categoryIcons';
 import { Save, Loader2, ArrowUpCircle, ArrowDownCircle, Calendar } from 'lucide-react';
@@ -96,6 +96,22 @@ export default function TransactionPage({ userId }) {
             showError('ยังไม่ได้เลือกหมวดหมู่', 'กรุณาเลือกหมวดหมู่ก่อนบันทึก');
             return;
         }
+
+        // ยืนยันก่อนบันทึกทุกครั้ง
+        const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+        const typeLabel = isExpense ? 'รายจ่าย' : 'รายรับ';
+        const amountColor = isExpense ? '#ef4444' : '#22c55e';
+        const summaryHtml = `
+            <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
+                <div><span style="color:#94a3b8;">ประเภท:</span> <b>${typeLabel}</b></div>
+                <div><span style="color:#94a3b8;">หมวดหมู่:</span> <b>${selectedCategory?.name ?? '-'}</b></div>
+                <div><span style="color:#94a3b8;">จำนวนเงิน:</span> <b style="color:${amountColor};">${isExpense ? '-' : '+'}${amountNum.toLocaleString()} บาท</b></div>
+                <div><span style="color:#94a3b8;">วันที่:</span> <b>${date}</b></div>
+                ${description ? `<div><span style="color:#94a3b8;">รายละเอียด:</span> <b>${description}</b></div>` : ''}
+            </div>
+        `;
+        const confirmResult = await showConfirm('ยืนยันการบันทึกรายการ?', '', summaryHtml, 'question');
+        if (!confirmResult.isConfirmed) return;
 
         setLoading(true);
 

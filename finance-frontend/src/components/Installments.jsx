@@ -25,6 +25,7 @@ export default function Installments({ userId }) {
         totalAmount: '',
         interestRate: '',
         interestType: 'YEARLY',
+        calculationMethod: 'FLAT',
         installmentMonths: '',
         startDate: new Date().toISOString().split('T')[0]
     });
@@ -62,7 +63,7 @@ export default function Installments({ userId }) {
     // Calculate preview when form data changes
     useEffect(() => {
         calculatePreview();
-    }, [formData.totalAmount, formData.interestRate, formData.interestType, formData.installmentMonths, formData.startDate]);
+    }, [formData.totalAmount, formData.interestRate, formData.interestType, formData.calculationMethod, formData.installmentMonths, formData.startDate]);
 
     const calculatePreview = () => {
         const total = parseFloat(formData.totalAmount);
@@ -71,40 +72,67 @@ export default function Installments({ userId }) {
         const startDate = new Date(formData.startDate);
 
         if (!isNaN(total) && total > 0 && !isNaN(months) && months > 0) {
-            // Flat rate calculation
-            let totalInterest = 0;
-            if (formData.interestType === 'YEARLY') {
-                totalInterest = total * (rate / 100) * (months / 12);
+            // อัตราดอกเบี้ยต่อเดือน (ทศนิยม) — YEARLY หารด้วย 12, MONTHLY ใช้ตามที่กรอก
+            const monthlyRate = formData.interestType === 'YEARLY'
+                ? (rate / 100) / 12
+                : (rate / 100);
+
+            let monthlyPayment;
+            let totalPayable;
+
+            if (formData.calculationMethod === 'EFFECTIVE') {
+                // ลดต้นลดดอก: ผ่อนคงที่ด้วยสูตร Amortization (PMT)
+                if (monthlyRate === 0) {
+                    monthlyPayment = total / months;
+                } else {
+                    const pow = Math.pow(1 + monthlyRate, months);
+                    monthlyPayment = (total * monthlyRate * pow) / (pow - 1);
+                }
+                totalPayable = monthlyPayment * months;
             } else {
-                totalInterest = total * (rate / 100) * months;
+                // ดอกเบี้ยคงที่ (Flat): ดอกเบี้ยคิดจากยอดเต็มทุกงวด
+                const totalInterestFlat = total * monthlyRate * months;
+                totalPayable = total + totalInterestFlat;
+                monthlyPayment = totalPayable / months;
             }
-            const totalPayable = total + totalInterest;
-            const monthlyPayment = totalPayable / months;
+
+            const totalInterest = totalPayable - total;
 
             setPreviewTotalInterest(totalInterest);
             setPreviewTotalPayable(totalPayable);
             setPreviewMonthlyAmount(monthlyPayment);
 
+            // ตารางผ่อน — ยอดคงเหลือ = เงินต้นคงเหลือ (ลดตามการตัดต้นในแต่ละงวด)
             const schedule = [];
-            let remaining = totalPayable;
-            const principalPerMonth = total / months;
-            const interestPerMonth = totalInterest / months;
+            let balance = total;
 
             for (let i = 1; i <= months; i++) {
                 const payDate = new Date(startDate);
                 payDate.setMonth(payDate.getMonth() + i - 1);
 
-                remaining -= monthlyPayment;
+                let interest;
+                let principal;
+                if (formData.calculationMethod === 'EFFECTIVE') {
+                    // ดอกเบี้ยงวดนี้คิดจากเงินต้นคงเหลือจริง
+                    interest = balance * monthlyRate;
+                    principal = monthlyPayment - interest;
+                } else {
+                    // Flat: เงินต้นและดอกเบี้ยเฉลี่ยเท่ากันทุกงวด
+                    principal = total / months;
+                    interest = totalInterest / months;
+                }
+
+                balance -= principal;
                 // Avoid tiny negative values due to floating point math
-                if (Math.abs(remaining) < 0.01) remaining = 0;
+                if (Math.abs(balance) < 0.01) balance = 0;
 
                 schedule.push({
                     month: i,
                     date: payDate.toISOString().split('T')[0],
                     payment: monthlyPayment,
-                    principal: principalPerMonth,
-                    interest: interestPerMonth,
-                    remaining: remaining
+                    principal: principal,
+                    interest: interest,
+                    remaining: balance
                 });
             }
             setPreviewSchedule(schedule);
@@ -133,6 +161,7 @@ export default function Installments({ userId }) {
             totalAmount: parseFloat(formData.totalAmount),
             interestRate: parseFloat(formData.interestRate || 0),
             interestType: formData.interestType,
+            calculationMethod: formData.calculationMethod,
             installmentMonths: parseInt(formData.installmentMonths),
             monthlyAmount: parseFloat(previewMonthlyAmount.toFixed(2)),
             startDate: formData.startDate
@@ -153,6 +182,7 @@ export default function Installments({ userId }) {
                     totalAmount: '',
                     interestRate: '',
                     interestType: 'YEARLY',
+                    calculationMethod: 'FLAT',
                     installmentMonths: '',
                     startDate: new Date().toISOString().split('T')[0]
                 });
@@ -185,7 +215,15 @@ export default function Installments({ userId }) {
         const months = item.installmentMonths;
         let paid = 0;
         const schedule = [];
-        let remainingBalance = item.monthlyAmount * item.installmentMonths;
+
+        // อัตราดอกเบี้ยต่อเดือน (ทศนิยม) — YEARLY หารด้วย 12, MONTHLY ใช้ตามที่เก็บไว้
+        const rate = parseFloat(item.interestRate || 0);
+        const monthlyRate = item.interestType === 'YEARLY'
+            ? (rate / 100) / 12
+            : (rate / 100);
+
+        // ยอดคงเหลือ = เงินต้นคงเหลือ ลดตามการตัดต้นในแต่ละงวด
+        let balance = item.totalAmount;
 
         for (let i = 1; i <= months; i++) {
             const payDate = new Date(startDate);
@@ -194,14 +232,24 @@ export default function Installments({ userId }) {
                 paid++;
             }
 
-            remainingBalance -= item.monthlyAmount;
-            if (Math.abs(remainingBalance) < 0.01) remainingBalance = 0;
+            let principal;
+            if (item.calculationMethod === 'EFFECTIVE') {
+                // ลดต้นลดดอก: ดอกเบี้ยงวดนี้คิดจากเงินต้นคงเหลือจริง
+                const interest = balance * monthlyRate;
+                principal = item.monthlyAmount - interest;
+            } else {
+                // Flat: ตัดต้นเท่ากันทุกงวด
+                principal = item.totalAmount / months;
+            }
+
+            balance -= principal;
+            if (Math.abs(balance) < 0.01) balance = 0;
 
             schedule.push({
                 month: i,
                 date: payDate.toISOString().split('T')[0],
                 payment: item.monthlyAmount,
-                remaining: remainingBalance
+                remaining: balance
             });
         }
 
@@ -297,6 +345,34 @@ export default function Installments({ userId }) {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                                <Percent size={18} className="text-indigo-500" /> วิธีคิดดอกเบี้ย
+                            </label>
+                            <div className="grid grid-cols-2 gap-2 bg-slate-50 p-1.5 rounded-2xl">
+                                {[
+                                    { value: 'FLAT', label: 'คงที่', sub: 'Flat Rate' },
+                                    { value: 'EFFECTIVE', label: 'ลดต้นลดดอก', sub: 'Effective Rate' },
+                                ].map((opt) => {
+                                    const active = formData.calculationMethod === opt.value;
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={opt.value}
+                                            onClick={() => setFormData({ ...formData, calculationMethod: opt.value })}
+                                            className={`py-2.5 px-3 rounded-xl text-center transition-all ${active
+                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                        >
+                                            <span className="block font-bold text-sm">{opt.label}</span>
+                                            <span className={`block text-[11px] ${active ? 'text-indigo-100' : 'text-slate-400'}`}>{opt.sub}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                                 <CalendarDays size={18} className="text-indigo-500" /> เริ่มชำระงวดแรก
                             </label>
                             <div
@@ -337,6 +413,10 @@ export default function Installments({ userId }) {
                             <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
                                 <h3 className="font-bold text-indigo-800 mb-4 text-center">สรุปการคำนวณเบื้องต้น</h3>
                                 <div className="space-y-2 text-sm text-indigo-700">
+                                    <div className="flex justify-between">
+                                        <span>วิธีคิด:</span>
+                                        <span className="font-semibold">{formData.calculationMethod === 'EFFECTIVE' ? 'ลดต้นลดดอก (Effective)' : 'คงที่ (Flat)'}</span>
+                                    </div>
                                     <div className="flex justify-between">
                                         <span>เงินต้น:</span>
                                         <span className="font-semibold">{formatCurrency(formData.totalAmount)}</span>
@@ -431,7 +511,12 @@ export default function Installments({ userId }) {
                                                 </div>
                                                 <div className="flex justify-between items-center text-sm text-slate-600 bg-slate-50 p-2 rounded-lg mt-3">
                                                     <span>ยอดจัด: <span className="font-semibold">{formatCurrency(item.totalAmount)}</span></span>
-                                                    <span>ดบ.: <span className="font-semibold">{item.interestRate}% {item.interestType === 'MONTHLY' ? '(ต่อเดือน)' : '(ต่อปี)'}</span></span>
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 text-[11px] font-bold">
+                                                            {item.calculationMethod === 'EFFECTIVE' ? 'ลดต้นลดดอก' : 'คงที่'}
+                                                        </span>
+                                                        <span>ดบ.: <span className="font-semibold">{item.interestRate}% {item.interestType === 'MONTHLY' ? '(ต่อเดือน)' : '(ต่อปี)'}</span></span>
+                                                    </span>
                                                 </div>
                                             </div>
 
