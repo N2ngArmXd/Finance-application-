@@ -1,16 +1,12 @@
 package com.example.finance_app.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -42,8 +38,6 @@ public class Categories {
     @Column(name = "is_deleted")
     private boolean isDeleted = false;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private Users user;
+    // หมวดหมู่เป็นชุด default กลาง ใช้ร่วมกันทุก user จึงไม่ผูก user_id อีกต่อไป
+    // (คอลัมน์ user_id เดิมใน DB ปล่อยไว้ได้ ไม่กระทบการทำงาน)
 }

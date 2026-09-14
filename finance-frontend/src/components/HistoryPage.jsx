@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, ArrowUpCircle, ArrowDownCircle, Edit2, Trash2 } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
 import Swal from 'sweetalert2';
+import { formatTxnId } from '../utils/format';
 
 const HistoryPage = ({ userId }) => {
     const [transactions, setTransactions] = useState([]);
@@ -131,8 +132,8 @@ const HistoryPage = ({ userId }) => {
                 const amount = document.getElementById('edit-amount').value;
                 const description = document.getElementById('edit-desc').value;
 
-                if (!amount || !description) {
-                    Swal.showValidationMessage('กรุณากรอกข้อมูลให้ครบถ้วน');
+                if (!amount || parseFloat(amount) <= 0) {
+                    Swal.showValidationMessage('กรุณากรอกจำนวนเงินมากกว่า 0');
                     return false;
                 }
 
@@ -256,7 +257,8 @@ const HistoryPage = ({ userId }) => {
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 text-slate-500 text-sm uppercase font-semibold">
                             <tr>
-                                <th className="px-6 py-4">วันที่</th>
+                                <th className="px-6 py-4">รหัส</th>
+                                <th className="px-6 py-4">วันที่ทำรายการ</th>
                                 <th className="px-6 py-4">หมวดหมู่</th>
                                 <th className="px-6 py-4">รายละเอียด</th>
                                 <th className="px-6 py-4 text-right">จำนวนเงิน</th>
@@ -265,9 +267,10 @@ const HistoryPage = ({ userId }) => {
                         </thead>
                         <tbody className="divide-y divide-slate-50">
                             {loading ? (
-                                <tr><td colSpan="5" className="text-center py-10 text-slate-400">กำลังโหลดข้อมูล...</td></tr>
+                                <tr><td colSpan="6" className="text-center py-10 text-slate-400">กำลังโหลดข้อมูล...</td></tr>
                             ) : transactions.map((item) => (
                                 <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
+                                    <td className="px-6 py-4 text-slate-500 text-sm font-mono">#{formatTxnId(item.id)}</td>
                                     <td className="px-6 py-4 text-slate-600 text-sm">
                                         {new Date(item.transactionDate).toLocaleDateString('th-TH-u-ca-buddhist', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                     </td>

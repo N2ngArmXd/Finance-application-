@@ -14,6 +14,7 @@ public class TransactionListResponse {
 
     private String categoryName;
     private String categoryType;
+    private String categoryIcon;
     private Long categoryId;
 
     public TransactionListResponse(Long id, BigDecimal amount, String description, LocalDateTime transactionDate,
@@ -73,6 +74,14 @@ public class TransactionListResponse {
 
     public void setCategoryType(String categoryType) {
         this.categoryType = categoryType;
+    }
+
+    public String getCategoryIcon() {
+        return categoryIcon;
+    }
+
+    public void setCategoryIcon(String categoryIcon) {
+        this.categoryIcon = categoryIcon;
     }
 
     public Long getCategoryId() {

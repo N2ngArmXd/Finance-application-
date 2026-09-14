@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.finance_app.dto.request.CategoriesRequest;
 import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
@@ -108,23 +107,6 @@ public class FinanceController {
     public ResponseEntity<List<Categories>> getCategoriesList() {
         List<Categories> categories = financeService.getMyCategories();
         return ResponseEntity.ok(categories);
-    }
-
-    @PostMapping("/add/categories")
-    public ResponseEntity<Categories> createCategoriesById(@RequestBody CategoriesRequest request) {
-        return ResponseEntity.ok(financeService.createdCategoriesByUserId(request));
-    }
-
-    @PostMapping("/categories/delete")
-    public ResponseEntity<String> deleteCategories(@RequestBody Map<String, Long> payload) {
-        try {
-            Long id = payload.get("id");
-
-            financeService.deleteCategories(id);
-            return ResponseEntity.ok("ลบหมวดหมู่เรียบร้อยแล้ว");
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
     }
 
     // ===================== Installments Controller =====================

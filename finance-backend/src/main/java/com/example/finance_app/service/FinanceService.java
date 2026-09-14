@@ -5,12 +5,12 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.example.finance_app.dto.request.CategoriesRequest;
 import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
@@ -83,9 +83,32 @@ public class FinanceService {
         transaction.setAmount(request.getAmount());
         transaction.setDescription(request.getDescription());
 
-        transaction.setTransactionDate(LocalDateTime.now());
+        // ใช้วันที่ที่ผู้ใช้เลือก (บันทึกย้อนหลังได้) ถ้าไม่ส่งมาให้ใช้เวลาปัจจุบัน
+        LocalDateTime txnDate = request.getTransactionDate() != null ? request.getTransactionDate()
+                : LocalDateTime.now();
+        transaction.setTransactionDate(txnDate);
+
+        // สร้าง id แบบ 14 หลัก: ประเภท(1) + DDMMYY(6) + สุ่ม(7)
+        transaction.setId(generateUniqueTransactionId(category.getType(), txnDate));
 
         return transactionRepository.save(transaction);
+    }
+
+    // id = [ประเภท 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
+    // ประเภท: INCOME=1, EXPENSE=2
+    private Long generateUniqueTransactionId(String categoryType, LocalDateTime date) {
+        long typeDigit = "INCOME".equalsIgnoreCase(categoryType) ? 1L : 2L;
+        long ddmmyy = date.getDayOfMonth() * 10000L
+                + date.getMonthValue() * 100L
+                + (date.getYear() % 100);
+        long prefix = typeDigit * 10_000_000_000_000L + ddmmyy * 10_000_000L;
+
+        Long newId;
+        do {
+            long random = ThreadLocalRandom.current().nextLong(0L, 10_000_000L); // 0..9,999,999
+            newId = prefix + random;
+        } while (transactionRepository.existsById(newId));
+        return newId;
     }
 
     // Delete Transaction
@@ -118,7 +141,7 @@ public class FinanceService {
         existingTransaction.setUserId(updateData.getUserId());
         existingTransaction.setAmount(updateData.getAmount());
         existingTransaction.setDescription(updateData.getDescription());
-        existingTransaction.setTransactionDate(LocalDateTime.now());
+        // ไม่เขียนทับ transactionDate เดิม (การแก้ไขไม่ควรเปลี่ยนวันที่ของรายการ)
 
         if (updateData.getCategoryId() != null) {
             existingTransaction.setCategoryId(updateData.getCategoryId());
@@ -143,6 +166,7 @@ public class FinanceService {
                 response.setCategoryId(t.getCategoryId().getId());
                 response.setCategoryName(t.getCategoryId().getName());
                 response.setCategoryType(t.getCategoryId().getType());
+                response.setCategoryIcon(t.getCategoryId().getIcon());
             }
             return response;
         }).collect(Collectors.toList());
@@ -150,39 +174,9 @@ public class FinanceService {
 
     // ======================= Categories Service =======================
 
+    // หมวดหมู่เป็นชุด default กลาง ใช้ร่วมกันทุก user
     public List<Categories> getMyCategories() {
-        // หา User คนแรกจากฐานข้อมูล
-        Users users = usersRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
-
-        return categoriesRepository.findByUserId(users.getId());
-    }
-
-    @Transactional
-    public Categories createdCategoriesByUserId(CategoriesRequest request) {
-
-        // หา User คนแรกจากฐานข้อมูล
-        Users users = usersRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
-
-        Categories categories = new Categories();
-
-        categories.setUser(users);
-        categories.setName(request.getName());
-        categories.setType(request.getType());
-        categories.setIcon(request.getIcon());
-
-        return categoriesRepository.save(categories);
-    }
-
-    @Transactional
-    public void deleteCategories(Long id) {
-
-        Categories categories = categoriesRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่ดังกล่าว ID: " + id));
-
-        categories.setDeleted(true);
-        categoriesRepository.save(categories);
+        return categoriesRepository.findAllActiveCategories();
     }
 
     // ======================= Installsments Service =======================
