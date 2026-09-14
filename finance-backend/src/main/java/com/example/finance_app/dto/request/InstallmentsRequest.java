@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 public class InstallmentsRequest {
 
+    private Long installmentsId;
     private Long userId;
     private String installmentsName;
     private String description;
@@ -16,6 +17,14 @@ public class InstallmentsRequest {
     private BigDecimal monthlyAmount;
     private LocalDate startDate;
     private LocalDate createdAt;
+
+    public Long getInstallmentsId() {
+        return installmentsId;
+    }
+
+    public void setInstallmentsId(Long installmentsId) {
+        this.installmentsId = installmentsId;
+    }
 
     public Long getUserId() {
         return userId;
