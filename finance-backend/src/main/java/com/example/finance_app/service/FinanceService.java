@@ -197,35 +197,62 @@ public class FinanceService {
 
         String type = (request.getInterestType() != null) ? request.getInterestType().toUpperCase() : "YEARLY";
 
+        // วิธีคิดดอกเบี้ย: FLAT (คงที่) หรือ EFFECTIVE (ลดต้นลดดอก) ค่าเริ่มต้น FLAT
+        String method = (request.getCalculationMethod() != null)
+                ? request.getCalculationMethod().toUpperCase()
+                : "FLAT";
+
         BigDecimal finalMonthlyAmount = request.getMonthlyAmount();
 
-        // Interest Rate 
+        // คำนวณยอดผ่อนต่อเดือนอัตโนมัติ เมื่อไม่ได้ส่ง monthlyAmount มาเอง
         if (finalMonthlyAmount == null || finalMonthlyAmount.compareTo(BigDecimal.ZERO) <= 0) {
 
-            BigDecimal principalPerMonth = request.getTotalAmount()
-                    .divide(new BigDecimal(request.getInstallmentMonths()), 2, RoundingMode.HALF_UP);
+            int months = request.getInstallmentMonths();
+            BigDecimal principal = request.getTotalAmount();
 
-            BigDecimal interestPerMonth;
-
+            // แปลงอัตราดอกเบี้ยให้เป็น "อัตราต่อเดือน" ในรูปทศนิยม (เช่น 15%/ปี -> 0.0125)
+            // YEARLY: rate เป็นต่อปี จึงหารด้วย 12 ; MONTHLY: rate เป็นต่อเดือนอยู่แล้ว
+            BigDecimal monthlyRate;
             if ("YEARLY".equals(type)) {
-                interestPerMonth = request.getTotalAmount().multiply(actualInterestRate)
+                monthlyRate = actualInterestRate
                         .divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP)
-                        .divide(new BigDecimal("12"), 2, RoundingMode.HALF_UP);
+                        .divide(new BigDecimal("12"), 10, RoundingMode.HALF_UP);
             } else {
-                interestPerMonth = request.getTotalAmount().multiply(actualInterestRate)
-                        .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+                monthlyRate = actualInterestRate
+                        .divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP);
             }
 
-            finalMonthlyAmount = principalPerMonth.add(interestPerMonth);
+            if ("EFFECTIVE".equals(method)) {
+                // ลดต้นลดดอก (Effective/Reducing Balance) ใช้สูตรผ่อนคงที่ (Amortization/PMT)
+                // PMT = P * r * (1+r)^n / ((1+r)^n - 1) ; ถ้า r = 0 -> P / n
+                if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
+                    finalMonthlyAmount = principal.divide(new BigDecimal(months), 2, RoundingMode.HALF_UP);
+                } else {
+                    BigDecimal pow = BigDecimal.ONE.add(monthlyRate).pow(months);
+                    finalMonthlyAmount = principal.multiply(monthlyRate).multiply(pow)
+                            .divide(pow.subtract(BigDecimal.ONE), 2, RoundingMode.HALF_UP);
+                }
+            } else {
+                // ดอกเบี้ยคงที่ (Flat/Fixed Rate): ดอกเบี้ยต่อเดือนคิดจากยอดเต็มทุกงวด
+                BigDecimal principalPerMonth = principal
+                        .divide(new BigDecimal(months), 2, RoundingMode.HALF_UP);
+                BigDecimal interestPerMonth = principal.multiply(monthlyRate)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+                finalMonthlyAmount = principalPerMonth.add(interestPerMonth);
+            }
         }
 
         InstallmentsEntity installments = new InstallmentsEntity();
 
+        LocalDate idDate = request.getStartDate() != null ? request.getStartDate() : LocalDate.now();
+        installments.setInstallmentsId(generateUniqueInstallmentId(method, idDate));
         installments.setUserId(request.getUserId());
         installments.setInstallmentsName(request.getInstallmentsName());
         installments.setDescription(request.getDescription());
         installments.setTotalAmount(request.getTotalAmount());
         installments.setInterestType(type);
+        installments.setCalculationMethod(method);
         installments.setInterestRate(actualInterestRate);
         installments.setInstallmentMonths(request.getInstallmentMonths());
         installments.setMonthlyAmount(finalMonthlyAmount);
@@ -238,6 +265,23 @@ public class FinanceService {
 
         return installmentsRepository.save(installments);
 
+    }
+
+    // id = [วิธีคิด 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
+    // วิธีคิด: FLAT=1, EFFECTIVE=2
+    private Long generateUniqueInstallmentId(String method, LocalDate date) {
+        long methodDigit = "EFFECTIVE".equalsIgnoreCase(method) ? 2L : 1L;
+        long ddmmyy = date.getDayOfMonth() * 10000L
+                + date.getMonthValue() * 100L
+                + (date.getYear() % 100);
+        long prefix = methodDigit * 10_000_000_000_000L + ddmmyy * 10_000_000L;
+
+        Long newId;
+        do {
+            long random = ThreadLocalRandom.current().nextLong(0L, 10_000_000L); // 0..9,999,999
+            newId = prefix + random;
+        } while (installmentsRepository.existsById(newId));
+        return newId;
     }
 
     public List<InstallmentsEntity> getListInstallments(Long userId) {
