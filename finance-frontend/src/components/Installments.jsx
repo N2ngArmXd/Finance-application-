@@ -347,6 +347,31 @@ export default function Installments({ userId }) {
         };
     };
 
+    // สรุปยอดรวมของทุกรายการผ่อน
+    const calculateOverallSummary = () => {
+        let totalPayable = 0;
+        let totalPaid = 0;
+
+        installmentsList.forEach((item) => {
+            const months = item.installmentMonths || 0;
+            const monthly = item.monthlyAmount || 0;
+
+            const paidCount = (item.paidPeriods || '')
+                .split(',')
+                .map((s) => parseInt(s.trim(), 10))
+                .filter((n) => !isNaN(n)).length;
+
+            totalPayable += monthly * months;
+            totalPaid += monthly * paidCount;
+        });
+
+        return {
+            totalPayable,
+            totalPaid,
+            totalRemaining: Math.max(totalPayable - totalPaid, 0)
+        };
+    };
+
     const handlePayPeriod = async (item, row) => {
         const markingPaid = !row.paid;
 
@@ -483,6 +508,7 @@ export default function Installments({ userId }) {
                                 type="number"
                                 required
                                 min="1"
+                                step="0.01"
                                 className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-semibold"
                                 placeholder="0.00"
                                 value={formData.totalAmount}
@@ -674,6 +700,42 @@ export default function Installments({ userId }) {
                     </div>
                 </div>
             )}
+
+            {/* สรุปยอดรวมผ่อนทั้งหมด */}
+            {!fetching && installmentsList.length > 0 && (() => {
+                const summary = calculateOverallSummary();
+                const paidPercent = summary.totalPayable > 0
+                    ? (summary.totalPaid / summary.totalPayable) * 100
+                    : 0;
+                return (
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                        <h2 className="text-xl font-bold text-slate-700 mb-4">ยอดรวมผ่อนทั้งหมด</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
+                                <div className="text-xs text-slate-500 mb-1">ยอดต้องจ่ายทั้งหมด</div>
+                                <div className="font-black text-slate-700 text-2xl">{formatCurrency(summary.totalPayable)}</div>
+                            </div>
+                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
+                                <div className="text-xs text-emerald-600 mb-1">จ่ายไปแล้ว</div>
+                                <div className="font-black text-emerald-600 text-2xl">{formatCurrency(summary.totalPaid)}</div>
+                            </div>
+                            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-center">
+                                <div className="text-xs text-indigo-600 mb-1">เหลือที่ต้องจ่าย</div>
+                                <div className="font-black text-indigo-600 text-2xl">{formatCurrency(summary.totalRemaining)}</div>
+                            </div>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2.5 mt-4">
+                            <div
+                                className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                                style={{ width: `${paidPercent}%` }}
+                            ></div>
+                        </div>
+                        <div className="text-right text-xs text-slate-500 mt-1.5">
+                            จ่ายแล้ว {paidPercent.toFixed(1)}% ของยอดทั้งหมด
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* รายการผ่อนชำระของคุณ — เต็มความกว้าง */}
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
