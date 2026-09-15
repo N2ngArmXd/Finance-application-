@@ -4,20 +4,27 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
+import com.example.finance_app.dto.request.TransactionSearchRequest;
 import com.example.finance_app.dto.response.AuthResponse;
 import com.example.finance_app.dto.response.TransactionListResponse;
+import com.example.finance_app.dto.response.TransactionPageResponse;
 import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.InstallmentsEntity;
 import com.example.finance_app.entity.Transaction;
@@ -156,21 +163,98 @@ public class FinanceService {
 
         List<Transaction> transactions = transactionRepository.findAllActiveTransactionsByUserId(userId);
 
-        return transactions.stream().map(t -> {
-            TransactionListResponse response = new TransactionListResponse();
-            response.setId(t.getId());
-            response.setAmount(t.getAmount());
-            response.setDescription(t.getDescription());
-            response.setTransactionDate(t.getTransactionDate());
+        return transactions.stream()
+                .map(this::toListResponse)
+                .collect(Collectors.toList());
+    }
 
-            if (t.getCategoryId() != null) {
-                response.setCategoryId(t.getCategoryId().getId());
-                response.setCategoryName(t.getCategoryId().getName());
-                response.setCategoryType(t.getCategoryId().getType());
-                response.setCategoryIcon(t.getCategoryId().getIcon());
+    // แปลง Transaction entity -> DTO (ใช้ร่วมกันหลายที่)
+    private TransactionListResponse toListResponse(Transaction t) {
+        TransactionListResponse response = new TransactionListResponse();
+        response.setId(t.getId());
+        response.setAmount(t.getAmount());
+        response.setDescription(t.getDescription());
+        response.setTransactionDate(t.getTransactionDate());
+
+        if (t.getCategoryId() != null) {
+            response.setCategoryId(t.getCategoryId().getId());
+            response.setCategoryName(t.getCategoryId().getName());
+            response.setCategoryType(t.getCategoryId().getType());
+            response.setCategoryIcon(t.getCategoryId().getIcon());
+        }
+        return response;
+    }
+
+    // ค้นหา/กรอง/เรียง/แบ่งหน้า + ยอดสรุปของทั้งชุดที่ตรงเงื่อนไข
+    public TransactionPageResponse searchTransactions(TransactionSearchRequest req) {
+
+        if (req.getUserId() == null) {
+            throw new RuntimeException("ไม่พบผู้ใช้");
+        }
+
+        // แบ่งหน้า: frontend เริ่มนับที่ 1 -> Spring เริ่มที่ 0
+        int page = (req.getPage() != null && req.getPage() > 0) ? req.getPage() - 1 : 0;
+        int size = (req.getSize() != null && req.getSize() > 0) ? req.getSize() : 10;
+
+        // เรียงลำดับ — จำกัดเฉพาะฟิลด์ที่อนุญาต กัน injection ผ่านชื่อฟิลด์
+        String sortBy = "amount".equalsIgnoreCase(req.getSortBy()) ? "amount" : "transactionDate";
+        Sort.Direction dir = "asc".equalsIgnoreCase(req.getSortDir())
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(dir, sortBy));
+
+        // ปรับพารามิเตอร์ให้เป็น null เมื่อไม่ต้องการกรอง
+        String search = (req.getSearch() != null && !req.getSearch().isBlank())
+                ? req.getSearch().trim()
+                : null;
+        String type = (req.getType() != null && !req.getType().isBlank() && !"ALL".equalsIgnoreCase(req.getType()))
+                ? req.getType()
+                : null;
+        Long categoryId = req.getCategoryId();
+        LocalDateTime dateFrom = req.getDateFrom() != null ? req.getDateFrom().atStartOfDay() : null;
+        LocalDateTime dateTo = req.getDateTo() != null ? req.getDateTo().atTime(LocalTime.MAX) : null;
+
+        Page<Transaction> result = transactionRepository.searchTransactions(
+                req.getUserId(), search, type, categoryId, dateFrom, dateTo, pageable);
+
+        List<TransactionListResponse> content = result.getContent().stream()
+                .map(this::toListResponse)
+                .collect(Collectors.toList());
+
+        // ยอดสรุปแยกตามประเภท (คิดจากทั้งชุดที่ตรงเงื่อนไข ไม่ใช่แค่หน้านี้)
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpense = BigDecimal.ZERO;
+        for (Object[] row : transactionRepository.sumByType(
+                req.getUserId(), search, type, categoryId, dateFrom, dateTo)) {
+            String catType = (String) row[0];
+            BigDecimal sum = (row[1] != null) ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+            if ("INCOME".equalsIgnoreCase(catType)) {
+                totalIncome = totalIncome.add(sum);
+            } else if ("EXPENSE".equalsIgnoreCase(catType)) {
+                totalExpense = totalExpense.add(sum);
             }
-            return response;
-        }).collect(Collectors.toList());
+        }
+
+        return new TransactionPageResponse(
+                content,
+                result.getNumber() + 1, // กลับเป็น 1-based ให้ frontend
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                totalIncome,
+                totalExpense);
+    }
+
+    // ลบหลายรายการพร้อมกัน (soft delete)
+    @Transactional
+    public int bulkDeleteTransactions(List<Long> ids, Long userId) {
+        if (userId == null) {
+            throw new RuntimeException("ไม่พบผู้ใช้");
+        }
+        if (ids == null || ids.isEmpty()) {
+            throw new RuntimeException("ไม่พบรายการที่จะลบ");
+        }
+        return transactionRepository.softDeleteByIds(ids, userId);
     }
 
     // ======================= Categories Service =======================

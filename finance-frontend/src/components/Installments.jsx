@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, Check, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Plus, X, Pencil, Trash2 } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
+
+const PAGE_SIZE = 10;
 
 export default function Installments({ userId }) {
     const [loading, setLoading] = useState(false);
@@ -8,6 +10,7 @@ export default function Installments({ userId }) {
     const [fetching, setFetching] = useState(true);
     const [expandedId, setExpandedId] = useState(null);
     const [payingKey, setPayingKey] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null); // null = สร้างใหม่, มีค่า = กำลังแก้ไข
     const [deletingId, setDeletingId] = useState(null);
@@ -478,6 +481,11 @@ export default function Installments({ userId }) {
         }
     };
 
+    // แบ่งหน้ารายการผ่อน — clamp หน้าให้อยู่ในช่วงที่ถูกต้องเสมอ
+    const totalPages = Math.max(1, Math.ceil(installmentsList.length / PAGE_SIZE));
+    const safePage = Math.min(currentPage, totalPages);
+    const pagedInstallments = installmentsList.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE);
+
     return (
         <div className="max-w-6xl mx-auto space-y-6">
             <h1 className="text-2xl font-black text-slate-800">ตารางผ่อนชำระ</h1>
@@ -783,8 +791,8 @@ export default function Installments({ userId }) {
                                 ยังไม่มีรายการผ่อนชำระ
                             </div>
                         ) : (
-                            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                                {installmentsList.map((item) => {
+                            <div className="space-y-4">
+                                {pagedInstallments.map((item) => {
                                     const progress = calculateProgress(item);
                                     const isExpanded = expandedId === item.installmentsId;
                                     const isCompleted = progress.paidCount >= progress.total;
@@ -942,6 +950,52 @@ export default function Installments({ userId }) {
                                         </div>
                                     );
                                 })}
+                            </div>
+                        )}
+
+                        {/* Pagination */}
+                        {!fetching && installmentsList.length > PAGE_SIZE && (
+                            <div className="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+                                <span className="text-sm text-slate-400">
+                                    แสดง {(safePage - 1) * PAGE_SIZE + 1}
+                                    {' - '}
+                                    {Math.min(safePage * PAGE_SIZE, installmentsList.length)}
+                                    {' จาก '}{installmentsList.length} รายการ
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                                        disabled={safePage === 1}
+                                        className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <ChevronLeft size={18} />
+                                    </button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                                        .map((p, idx, arr) => (
+                                            <React.Fragment key={p}>
+                                                {idx > 0 && p - arr[idx - 1] > 1 && (
+                                                    <span className="px-2 text-slate-400">…</span>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCurrentPage(p)}
+                                                    className={`min-w-9 h-9 px-3 rounded-xl text-sm font-semibold transition-all ${safePage === p ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            </React.Fragment>
+                                        ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                                        disabled={safePage === totalPages}
+                                        className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                    >
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

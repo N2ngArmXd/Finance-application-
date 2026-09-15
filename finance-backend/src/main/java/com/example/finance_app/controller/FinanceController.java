@@ -17,10 +17,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.finance_app.dto.request.BulkDeleteRequest;
 import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.request.TransactionRequest;
+import com.example.finance_app.dto.request.TransactionSearchRequest;
 import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.InstallmentsEntity;
@@ -95,6 +97,27 @@ public class FinanceController {
             Long userId = payload.get("userId");
             List<TransactionListResponse> result = financeService.getListTransaction(userId);
             return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // Search + filter + sort + pagination (หน้าประวัติธุรกรรม)
+    @PostMapping("/transactions/search")
+    public ResponseEntity<?> searchTransactions(@RequestBody TransactionSearchRequest req) {
+        try {
+            return ResponseEntity.ok(financeService.searchTransactions(req));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // ลบหลายรายการพร้อมกัน (soft delete)
+    @PostMapping("/transactions/delete-batch")
+    public ResponseEntity<String> deleteTransactionsBatch(@RequestBody BulkDeleteRequest req) {
+        try {
+            int deleted = financeService.bulkDeleteTransactions(req.getIds(), req.getUserId());
+            return ResponseEntity.ok("ลบ " + deleted + " รายการเรียบร้อยแล้ว");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
