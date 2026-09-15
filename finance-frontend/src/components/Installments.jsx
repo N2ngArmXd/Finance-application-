@@ -351,24 +351,46 @@ export default function Installments({ userId }) {
     const calculateOverallSummary = () => {
         let totalPayable = 0;
         let totalPaid = 0;
+        let thisMonthDue = 0;
+
+        const now = new Date();
+        const curMonth = now.getMonth();
+        const curYear = now.getFullYear();
 
         installmentsList.forEach((item) => {
             const months = item.installmentMonths || 0;
             const monthly = item.monthlyAmount || 0;
 
-            const paidCount = (item.paidPeriods || '')
-                .split(',')
-                .map((s) => parseInt(s.trim(), 10))
-                .filter((n) => !isNaN(n)).length;
+            const paidSet = new Set(
+                (item.paidPeriods || '')
+                    .split(',')
+                    .map((s) => parseInt(s.trim(), 10))
+                    .filter((n) => !isNaN(n))
+            );
 
             totalPayable += monthly * months;
-            totalPaid += monthly * paidCount;
+            totalPaid += monthly * paidSet.size;
+
+            // งวดที่ครบกำหนดในเดือนนี้และยังไม่ได้จ่าย
+            const startDate = new Date(item.startDate);
+            for (let i = 1; i <= months; i++) {
+                const payDate = new Date(startDate);
+                payDate.setMonth(payDate.getMonth() + i - 1);
+                if (
+                    payDate.getMonth() === curMonth &&
+                    payDate.getFullYear() === curYear &&
+                    !paidSet.has(i)
+                ) {
+                    thisMonthDue += monthly;
+                }
+            }
         });
 
         return {
             totalPayable,
             totalPaid,
-            totalRemaining: Math.max(totalPayable - totalPaid, 0)
+            totalRemaining: Math.max(totalPayable - totalPaid, 0),
+            thisMonthDue
         };
     };
 
@@ -710,10 +732,14 @@ export default function Installments({ userId }) {
                 return (
                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                         <h2 className="text-xl font-bold text-slate-700 mb-4">ยอดรวมผ่อนทั้งหมด</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                                 <div className="text-xs text-slate-500 mb-1">ยอดต้องจ่ายทั้งหมด</div>
                                 <div className="font-black text-slate-700 text-2xl">{formatCurrency(summary.totalPayable)}</div>
+                            </div>
+                            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+                                <div className="text-xs text-amber-600 mb-1">ต้องจ่ายเดือนนี้</div>
+                                <div className="font-black text-amber-600 text-2xl">{formatCurrency(summary.thisMonthDue)}</div>
                             </div>
                             <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
                                 <div className="text-xs text-emerald-600 mb-1">จ่ายไปแล้ว</div>
@@ -761,9 +787,13 @@ export default function Installments({ userId }) {
                                 {installmentsList.map((item) => {
                                     const progress = calculateProgress(item);
                                     const isExpanded = expandedId === item.installmentsId;
+                                    const isCompleted = progress.paidCount >= progress.total;
+                                    const statusBorder = isCompleted
+                                        ? 'border-emerald-400 bg-emerald-50/30'
+                                        : 'border-amber-400 bg-amber-50/30';
 
                                     return (
-                                        <div key={item.installmentsId} className="border border-slate-100 rounded-2xl overflow-hidden hover:shadow-md transition-shadow">
+                                        <div key={item.installmentsId} className={`border-2 ${statusBorder} rounded-2xl overflow-hidden hover:shadow-md transition-shadow`}>
                                             <div
                                                 className="p-4 cursor-pointer bg-white"
                                                 onClick={() => setExpandedId(isExpanded ? null : item.installmentsId)}

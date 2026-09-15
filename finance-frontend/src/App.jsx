@@ -42,23 +42,12 @@ function App() {
         setIsOpen={setIsSidebarOpen}
         activePage={activePage}
         setActivePage={setActivePage}
+        user={user}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
       <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-72' : 'ml-20'}`}>
-        {/* Top Header */}
-        <header className="flex justify-end p-6">
-          <div className="flex items-center gap-4 bg-white p-2 px-4 rounded-2xl shadow-sm border border-slate-100">
-            <span className="text-sm font-bold text-slate-600">👤 {user.username}</span>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-red-500 font-bold hover:bg-red-50 p-2 px-3 rounded-xl transition"
-            >
-              ออกจากระบบ
-            </button>
-          </div>
-        </header>
-
         {/* Content Section */}
         <main className="p-8">
           {activePage === 'dashboard' && (
