@@ -11,6 +11,7 @@ export default function Installments({ userId }) {
     const [expandedId, setExpandedId] = useState(null);
     const [payingKey, setPayingKey] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
+    const [showCompleted, setShowCompleted] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null); // null = สร้างใหม่, มีค่า = กำลังแก้ไข
     const [deletingId, setDeletingId] = useState(null);
@@ -355,10 +356,16 @@ export default function Installments({ userId }) {
         let totalPayable = 0;
         let totalPaid = 0;
         let thisMonthDue = 0;
+        let nextMonthDue = 0;
 
         const now = new Date();
         const curMonth = now.getMonth();
         const curYear = now.getFullYear();
+
+        // เดือนถัดไป (ข้ามปีอัตโนมัติเมื่อเป็นเดือนธันวาคม)
+        const nextMonthDate = new Date(curYear, curMonth + 1, 1);
+        const nextMonth = nextMonthDate.getMonth();
+        const nextYear = nextMonthDate.getFullYear();
 
         installmentsList.forEach((item) => {
             const months = item.installmentMonths || 0;
@@ -386,6 +393,14 @@ export default function Installments({ userId }) {
                 ) {
                     thisMonthDue += monthly;
                 }
+                // งวดที่ครบกำหนดในเดือนหน้าและยังไม่ได้จ่าย
+                if (
+                    payDate.getMonth() === nextMonth &&
+                    payDate.getFullYear() === nextYear &&
+                    !paidSet.has(i)
+                ) {
+                    nextMonthDue += monthly;
+                }
             }
         });
 
@@ -393,7 +408,8 @@ export default function Installments({ userId }) {
             totalPayable,
             totalPaid,
             totalRemaining: Math.max(totalPayable - totalPaid, 0),
-            thisMonthDue
+            thisMonthDue,
+            nextMonthDue
         };
     };
 
@@ -481,10 +497,23 @@ export default function Installments({ userId }) {
         }
     };
 
-    // แบ่งหน้ารายการผ่อน — clamp หน้าให้อยู่ในช่วงที่ถูกต้องเสมอ
-    const totalPages = Math.max(1, Math.ceil(installmentsList.length / PAGE_SIZE));
+    // นับงวดที่จ่ายแล้ว เพื่อเช็คว่าผ่อนครบหรือยัง
+    const countPaidPeriods = (item) => (item.paidPeriods || '')
+        .split(',')
+        .map((s) => parseInt(s.trim(), 10))
+        .filter((n) => !isNaN(n)).length;
+
+    const isInstallmentCompleted = (item) =>
+        (item.installmentMonths || 0) > 0 && countPaidPeriods(item) >= item.installmentMonths;
+
+    // แยกรายการที่ผ่อนเสร็จแล้วออกจากรายการที่ยังผ่อนอยู่
+    const activeInstallments = installmentsList.filter((item) => !isInstallmentCompleted(item));
+    const completedInstallments = installmentsList.filter(isInstallmentCompleted);
+
+    // แบ่งหน้ารายการผ่อน (เฉพาะที่ยังผ่อนอยู่) — clamp หน้าให้อยู่ในช่วงที่ถูกต้องเสมอ
+    const totalPages = Math.max(1, Math.ceil(activeInstallments.length / PAGE_SIZE));
     const safePage = Math.min(currentPage, totalPages);
-    const pagedInstallments = installmentsList.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE);
+    const pagedInstallments = activeInstallments.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
@@ -740,7 +769,7 @@ export default function Installments({ userId }) {
                 return (
                     <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                         <h2 className="text-xl font-bold text-slate-700 mb-4">ยอดรวมผ่อนทั้งหมด</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
                                 <div className="text-xs text-slate-500 mb-1">ยอดต้องจ่ายทั้งหมด</div>
                                 <div className="font-black text-slate-700 text-2xl">{formatCurrency(summary.totalPayable)}</div>
@@ -748,6 +777,10 @@ export default function Installments({ userId }) {
                             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
                                 <div className="text-xs text-amber-600 mb-1">ต้องจ่ายเดือนนี้</div>
                                 <div className="font-black text-amber-600 text-2xl">{formatCurrency(summary.thisMonthDue)}</div>
+                            </div>
+                            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center">
+                                <div className="text-xs text-orange-600 mb-1">ต้องจ่ายเดือนหน้า</div>
+                                <div className="font-black text-orange-600 text-2xl">{formatCurrency(summary.nextMonthDue)}</div>
                             </div>
                             <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
                                 <div className="text-xs text-emerald-600 mb-1">จ่ายไปแล้ว</div>
@@ -786,9 +819,9 @@ export default function Installments({ userId }) {
 
                         {fetching ? (
                             <div className="text-center text-slate-500 py-8">กำลังโหลดข้อมูล...</div>
-                        ) : installmentsList.length === 0 ? (
+                        ) : activeInstallments.length === 0 ? (
                             <div className="text-center text-slate-400 py-8 border-2 border-dashed border-slate-100 rounded-2xl">
-                                ยังไม่มีรายการผ่อนชำระ
+                                {installmentsList.length === 0 ? 'ยังไม่มีรายการผ่อนชำระ' : 'ไม่มีรายการที่กำลังผ่อนอยู่'}
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -954,13 +987,13 @@ export default function Installments({ userId }) {
                         )}
 
                         {/* Pagination */}
-                        {!fetching && installmentsList.length > PAGE_SIZE && (
+                        {!fetching && activeInstallments.length > PAGE_SIZE && (
                             <div className="mt-5 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
                                 <span className="text-sm text-slate-400">
                                     แสดง {(safePage - 1) * PAGE_SIZE + 1}
                                     {' - '}
-                                    {Math.min(safePage * PAGE_SIZE, installmentsList.length)}
-                                    {' จาก '}{installmentsList.length} รายการ
+                                    {Math.min(safePage * PAGE_SIZE, activeInstallments.length)}
+                                    {' จาก '}{activeInstallments.length} รายการ
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <button
@@ -999,6 +1032,82 @@ export default function Installments({ userId }) {
                             </div>
                         )}
                     </div>
+
+            {/* รายการที่ผ่อนเสร็จแล้ว — เปิด/ปิดตารางได้ */}
+            {!fetching && completedInstallments.length > 0 && (
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <button
+                        type="button"
+                        onClick={() => setShowCompleted((v) => !v)}
+                        className="w-full flex items-center justify-between gap-3 text-left"
+                    >
+                        <h2 className="text-xl font-bold text-slate-700 flex items-center gap-2">
+                            <Check size={20} className="text-emerald-500" />
+                            ผ่อนเสร็จแล้ว
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">
+                                {completedInstallments.length}
+                            </span>
+                        </h2>
+                        {showCompleted
+                            ? <ChevronUp size={20} className="text-slate-400" />
+                            : <ChevronDown size={20} className="text-slate-400" />}
+                    </button>
+
+                    {showCompleted && (
+                        <div className="mt-4 overflow-x-auto border border-slate-100 rounded-2xl">
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th className="px-4 py-3">รายการ</th>
+                                        <th className="px-4 py-3">ยอดจัด</th>
+                                        <th className="px-4 py-3">ค่างวด/เดือน</th>
+                                        <th className="px-4 py-3">จำนวนงวด</th>
+                                        <th className="px-4 py-3">เริ่มชำระ</th>
+                                        <th className="px-4 py-3 text-center">จัดการ</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {completedInstallments.map((item) => (
+                                        <tr key={item.installmentsId} className="hover:bg-emerald-50/40">
+                                            <td className="px-4 py-3 font-semibold text-slate-700">
+                                                {item.installmentsName}
+                                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[11px] font-bold align-middle">
+                                                    <Check size={12} /> ครบแล้ว
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-600">{formatCurrency(item.totalAmount)}</td>
+                                            <td className="px-4 py-3 font-semibold text-indigo-600">{formatCurrency(item.monthlyAmount)}</td>
+                                            <td className="px-4 py-3 text-slate-600">{item.installmentMonths} งวด</td>
+                                            <td className="px-4 py-3 text-slate-600">{formatDate(item.startDate)}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                <div className="inline-flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openEditModal(item)}
+                                                        title="แก้ไขรายการ"
+                                                        className="p-2 rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        disabled={deletingId === item.installmentsId}
+                                                        onClick={() => handleDelete(item)}
+                                                        title="ลบรายการ"
+                                                        className="p-2 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
             </div>
     );
 }
