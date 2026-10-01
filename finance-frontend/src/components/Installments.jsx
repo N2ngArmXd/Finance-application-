@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Plus, X, Pencil, Trash2, Lock } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
 
 const PAGE_SIZE = 10;
@@ -15,6 +15,7 @@ export default function Installments({ userId }) {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null); // null = สร้างใหม่, มีค่า = กำลังแก้ไข
     const [deletingId, setDeletingId] = useState(null);
+    const [closingId, setClosingId] = useState(null);
     const dateInputRef = useRef(null);
 
     const emptyForm = {
@@ -351,7 +352,7 @@ export default function Installments({ userId }) {
         };
     };
 
-    // สรุปยอดรวมของทุกรายการผ่อน
+    // สรุปยอดรวม — นับเฉพาะรายการที่กำลังผ่อนอยู่ (ไม่รวมที่จ่ายครบ/ปิดยอดแล้ว)
     const calculateOverallSummary = () => {
         let totalPayable = 0;
         let totalPaid = 0;
@@ -367,7 +368,7 @@ export default function Installments({ userId }) {
         const nextMonth = nextMonthDate.getMonth();
         const nextYear = nextMonthDate.getFullYear();
 
-        installmentsList.forEach((item) => {
+        activeInstallments.forEach((item) => {
             const months = item.installmentMonths || 0;
             const monthly = item.monthlyAmount || 0;
 
@@ -497,14 +498,62 @@ export default function Installments({ userId }) {
         }
     };
 
+    const handleClose = async (item) => {
+        const paidCount = countPaidPeriods(item);
+        const remainingPeriods = Math.max((item.installmentMonths || 0) - paidCount, 0);
+
+        const detailHtml = `
+            <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
+                <div><span style="color:#94a3b8;">รายการ:</span> <b>${item.installmentsName}</b></div>
+                <div><span style="color:#94a3b8;">จ่ายแล้ว:</span> <b>${paidCount} / ${item.installmentMonths} งวด</b></div>
+                <div><span style="color:#94a3b8;">ค่างวดคงเหลือ:</span> <b style="color:#C2412D;">${formatCurrency(item.monthlyAmount * remainingPeriods)}</b> (${remainingPeriods} งวด)</div>
+            </div>
+        `;
+        const confirmResult = await showConfirm(
+            'ยืนยันการปิดยอด?',
+            '',
+            detailHtml,
+            'warning',
+            'bg-expense-500 text-white hover:bg-expense-600'
+        );
+        if (!confirmResult.isConfirmed) return;
+
+        setClosingId(item.installmentsId);
+        try {
+            const response = await fetch('/api/finance-app/installments/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ installmentsId: item.installmentsId, userId })
+            });
+
+            if (response.ok) {
+                showSuccess('ปิดยอดเรียบร้อย!', `ปิดยอด "${item.installmentsName}" แล้ว`);
+                if (expandedId === item.installmentsId) setExpandedId(null);
+                // รายการที่ปิดยอดจะย้ายไปตาราง "ผ่อนเสร็จแล้ว" — เปิดตารางให้เห็นทันที
+                setShowCompleted(true);
+                await fetchInstallments();
+            } else {
+                const errorText = await response.text();
+                showError('ปิดยอดไม่สำเร็จ', errorText || 'กรุณาลองใหม่อีกครั้ง');
+            }
+        } catch (error) {
+            console.error('Close installment error:', error);
+            showError('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        } finally {
+            setClosingId(null);
+        }
+    };
+
     // นับงวดที่จ่ายแล้ว เพื่อเช็คว่าผ่อนครบหรือยัง
     const countPaidPeriods = (item) => (item.paidPeriods || '')
         .split(',')
         .map((s) => parseInt(s.trim(), 10))
         .filter((n) => !isNaN(n)).length;
 
+    // ผ่อนเสร็จ = จ่ายครบทุกงวด หรือ ปิดยอดแล้ว (CLOSED)
     const isInstallmentCompleted = (item) =>
-        (item.installmentMonths || 0) > 0 && countPaidPeriods(item) >= item.installmentMonths;
+        item.status === 'CLOSED'
+        || ((item.installmentMonths || 0) > 0 && countPaidPeriods(item) >= item.installmentMonths);
 
     // แยกรายการที่ผ่อนเสร็จแล้วออกจากรายการที่ยังผ่อนอยู่
     const activeInstallments = installmentsList.filter((item) => !isInstallmentCompleted(item));
@@ -855,6 +904,16 @@ export default function Installments({ userId }) {
                                                         <div className="flex items-center gap-1">
                                                             <button
                                                                 type="button"
+                                                                disabled={closingId === item.installmentsId}
+                                                                onClick={(e) => { e.stopPropagation(); handleClose(item); }}
+                                                                title="ปิดยอดรายการนี้"
+                                                                className="inline-flex items-center gap-1 px-3 py-1.5 mr-1 rounded-xl text-xs font-bold text-white bg-expense-500 hover:bg-expense-600 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <Lock size={14} />
+                                                                {closingId === item.installmentsId ? 'กำลังปิด...' : 'ปิดยอด'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
                                                                 onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
                                                                 title="แก้ไขรายการ"
                                                                 className="p-2 rounded-xl text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
@@ -1071,9 +1130,22 @@ export default function Installments({ userId }) {
                                         <tr key={item.installmentsId} className="hover:bg-income-50/40">
                                             <td className="px-4 py-3 font-semibold text-slate-700">
                                                 {item.installmentsName}
-                                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-income-100 text-income-600 text-[11px] font-bold align-middle">
-                                                    <Check size={12} /> ครบแล้ว
-                                                </span>
+                                                {item.status === 'CLOSED' ? (
+                                                    <>
+                                                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-expense-100 text-expense-600 text-[11px] font-bold align-middle">
+                                                            <Lock size={12} /> ปิดยอด
+                                                        </span>
+                                                        {item.closedAt && (
+                                                            <div className="text-xs font-normal text-slate-400 mt-0.5">
+                                                                ปิดยอดเมื่อ {formatDate(item.closedAt)} · จ่ายแล้ว {countPaidPeriods(item)}/{item.installmentMonths} งวด
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-income-100 text-income-600 text-[11px] font-bold align-middle">
+                                                        <Check size={12} /> ครบแล้ว
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-slate-600">{formatCurrency(item.totalAmount)}</td>
                                             <td className="px-4 py-3 font-semibold text-brand-600">{formatCurrency(item.monthlyAmount)}</td>
@@ -1081,14 +1153,17 @@ export default function Installments({ userId }) {
                                             <td className="px-4 py-3 text-slate-600">{formatDate(item.startDate)}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <div className="inline-flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openEditModal(item)}
-                                                        title="แก้ไขรายการ"
-                                                        className="p-2 rounded-xl text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
+                                                    {/* รายการที่ปิดยอดแล้วแก้ไขไม่ได้ (backend ปฏิเสธ) */}
+                                                    {item.status !== 'CLOSED' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openEditModal(item)}
+                                                            title="แก้ไขรายการ"
+                                                            className="p-2 rounded-xl text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                                                        >
+                                                            <Pencil size={16} />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         disabled={deletingId === item.installmentsId}

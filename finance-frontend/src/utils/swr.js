@@ -42,7 +42,13 @@ export const showError = (title, text) => {
     });
 };
 
-export const showConfirm = (title, text, html, icon = 'warning') => {
+export const showConfirm = (
+    title,
+    text,
+    html,
+    icon = 'warning',
+    confirmButtonClass = 'bg-brand-600 text-white hover:bg-brand-700'
+) => {
     return MySwal.fire({
         title: `<span class="text-slate-800 font-black">${title}</span>`,
         text: html ? undefined : text,
@@ -55,7 +61,7 @@ export const showConfirm = (title, text, html, icon = 'warning') => {
         reverseButtons: true,
         customClass: {
             popup: 'rounded-[2rem] p-8',
-            confirmButton: 'bg-brand-600 text-white hover:bg-brand-700 px-10 py-3 rounded-xl',
+            confirmButton: `${confirmButtonClass} px-10 py-3 rounded-xl`,
             cancelButton: 'bg-slate-100 text-slate-600 hover:bg-slate-200 px-10 py-3 rounded-xl'
         }
     });

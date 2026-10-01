@@ -63,6 +63,10 @@ public class InstallmentsEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // log วันเวลาที่ปิดยอด (status = CLOSED) — null = ยังไม่เคยปิดยอด
+    @Column(name = "closed_at")
+    private LocalDateTime closedAt;
+
     // Generate Getters and Setters here
     public Long getInstallmentsId() {
         return installmentsId;
@@ -174,6 +178,14 @@ public class InstallmentsEntity {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getClosedAt() {
+        return closedAt;
+    }
+
+    public void setClosedAt(LocalDateTime closedAt) {
+        this.closedAt = closedAt;
     }
 
     public boolean isDeleted() {

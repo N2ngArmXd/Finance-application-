@@ -187,4 +187,17 @@ public class FinanceController {
         }
     }
 
+    // ปิดยอดรายการผ่อน (status = CLOSED + log วันที่ปิด)
+    @PostMapping("installments/close")
+    public ResponseEntity<?> closeInstallment(@RequestBody Map<String, Object> payload) {
+        try {
+            Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
+            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
+            InstallmentsEntity result = financeService.closeInstallment(installmentsId, userId);
+            return ResponseEntity.ok(result);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
 }

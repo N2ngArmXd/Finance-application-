@@ -393,6 +393,9 @@ public class FinanceService {
         if (request.getUserId() != null && !request.getUserId().equals(item.getUserId())) {
             throw new IllegalArgumentException("ไม่มีสิทธิ์แก้ไขรายการนี้");
         }
+        if ("CLOSED".equals(item.getStatus())) {
+            throw new IllegalArgumentException("ไม่สามารถแก้ไขรายการที่ปิดยอดแล้ว");
+        }
         if (request.getTotalAmount() == null || request.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("ยอดรวมต้องมากกว่า 0 บาทนะจ๊ะน้อง");
         }
@@ -467,6 +470,9 @@ public class FinanceService {
         if (userId != null && !userId.equals(item.getUserId())) {
             throw new IllegalArgumentException("ไม่มีสิทธิ์แก้ไขรายการนี้");
         }
+        if ("CLOSED".equals(item.getStatus())) {
+            throw new IllegalArgumentException("ไม่สามารถแก้ไขงวดของรายการที่ปิดยอดแล้ว");
+        }
         if (period < 1 || period > item.getInstallmentMonths()) {
             throw new IllegalArgumentException("งวดที่ระบุไม่ถูกต้อง");
         }
@@ -496,6 +502,29 @@ public class FinanceService {
         } else if ("COMPLETED".equals(item.getStatus())) {
             item.setStatus("ACTIVE");
         }
+
+        return installmentsRepository.save(item);
+    }
+
+    // ปิดยอดรายการผ่อน — เปลี่ยนสถานะเป็น CLOSED และเก็บ log วันที่ปิดใน closed_at
+    // ไม่แตะ paid_periods เพื่อเก็บประวัติว่าก่อนปิดจ่ายจริงไปกี่งวด
+    @Transactional
+    public InstallmentsEntity closeInstallment(Long installmentsId, Long userId) {
+        InstallmentsEntity item = installmentsRepository.findById(installmentsId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายการผ่อนชำระ"));
+
+        if (item.isDeleted()) {
+            throw new IllegalArgumentException("ไม่สามารถปิดยอดรายการที่ลบไปแล้ว");
+        }
+        if (userId != null && !userId.equals(item.getUserId())) {
+            throw new IllegalArgumentException("ไม่มีสิทธิ์แก้ไขรายการนี้");
+        }
+        if (!"ACTIVE".equals(item.getStatus())) {
+            throw new IllegalArgumentException("ปิดยอดได้เฉพาะรายการที่กำลังผ่อนอยู่");
+        }
+
+        item.setStatus("CLOSED");
+        item.setClosedAt(LocalDateTime.now());
 
         return installmentsRepository.save(item);
     }
