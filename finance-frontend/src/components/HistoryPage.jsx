@@ -158,7 +158,7 @@ const HistoryPage = ({ userId }) => {
             showCancelButton: true,
             confirmButtonText: 'บันทึกการแก้ไข',
             cancelButtonText: 'ยกเลิก',
-            confirmButtonColor: '#4F46E5',
+            confirmButtonColor: '#12305C',
             customClass: {
                 popup: 'rounded-[2rem]',
                 confirmButton: 'rounded-xl px-6 py-3 font-bold',
@@ -173,11 +173,11 @@ const HistoryPage = ({ userId }) => {
                 const updateBanner = (val) => {
                     const type = getCategoryType(val);
                     if (type === 'INCOME') {
-                        banner.className = 'p-3 rounded-2xl flex items-center gap-2 bg-green-50 text-green-600 border border-green-100';
+                        banner.className = 'p-3 rounded-2xl flex items-center gap-2 bg-income-50 text-income-600 border border-income-100';
                         typeText.innerText = 'ประเภทรายการ: รายรับ';
                         typeIcon.innerHTML = '↑';
                     } else {
-                        banner.className = 'p-3 rounded-2xl flex items-center gap-2 bg-red-50 text-red-600 border border-red-100';
+                        banner.className = 'p-3 rounded-2xl flex items-center gap-2 bg-expense-50 text-expense-600 border border-expense-100';
                         typeText.innerText = 'ประเภทรายการ: รายจ่าย';
                         typeIcon.innerHTML = '↓';
                     }
@@ -317,8 +317,8 @@ const HistoryPage = ({ userId }) => {
     const renderSortIcon = (column) => {
         if (sortConfig.key !== column) return <ArrowUpDown size={14} className="inline-block ml-1 opacity-40" />;
         return sortConfig.direction === 'asc'
-            ? <ArrowUp size={14} className="inline-block ml-1 text-indigo-500" />
-            : <ArrowDown size={14} className="inline-block ml-1 text-indigo-500" />;
+            ? <ArrowUp size={14} className="inline-block ml-1 text-brand-500" />
+            : <ArrowDown size={14} className="inline-block ml-1 text-brand-500" />;
     };
 
     const clearFilters = () => {
@@ -346,7 +346,7 @@ const HistoryPage = ({ userId }) => {
                             value={searchTerm}
                             onChange={(e) => { resetToFirstPage(); setSearchTerm(e.target.value); }}
                             placeholder="ค้นหารายการ (รายละเอียด / หมวดหมู่ / รหัส)..."
-                            className="w-full pl-12 pr-10 py-3 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                            className="w-full pl-12 pr-10 py-3 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                         />
                         {searchTerm && (
                             <button
@@ -359,11 +359,11 @@ const HistoryPage = ({ userId }) => {
                     </div>
                     <button
                         onClick={() => setShowFilters((s) => !s)}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl transition-all ${showFilters || activeFilterCount > 0 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                        className={`flex items-center gap-2 px-6 py-3 rounded-2xl transition-all ${showFilters || activeFilterCount > 0 ? 'bg-brand-50 text-brand-600' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                     >
                         <Filter size={18} /> ตัวกรอง
                         {activeFilterCount > 0 && (
-                            <span className="ml-1 flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-indigo-500 rounded-full">
+                            <span className="ml-1 flex items-center justify-center min-w-5 h-5 px-1.5 text-xs font-bold text-white bg-brand-500 rounded-full">
                                 {activeFilterCount}
                             </span>
                         )}
@@ -384,7 +384,7 @@ const HistoryPage = ({ userId }) => {
                                     <button
                                         key={opt.v}
                                         onClick={() => { resetToFirstPage(); setFilterType(opt.v); }}
-                                        className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${filterType === opt.v ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${filterType === opt.v ? 'bg-white shadow-sm text-brand-600' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         {opt.label}
                                     </button>
@@ -398,7 +398,7 @@ const HistoryPage = ({ userId }) => {
                             <select
                                 value={filterCategory}
                                 onChange={(e) => { resetToFirstPage(); setFilterCategory(e.target.value); }}
-                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                             >
                                 <option value="ALL">ทุกหมวดหมู่</option>
                                 {categories.map((cat) => (
@@ -414,7 +414,7 @@ const HistoryPage = ({ userId }) => {
                                 type="date"
                                 value={filterStart}
                                 onChange={(e) => { resetToFirstPage(); setFilterStart(e.target.value); }}
-                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                             />
                         </div>
 
@@ -425,7 +425,7 @@ const HistoryPage = ({ userId }) => {
                                 type="date"
                                 value={filterEnd}
                                 onChange={(e) => { resetToFirstPage(); setFilterEnd(e.target.value); }}
-                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                                className="w-full px-4 py-2.5 bg-slate-50 rounded-2xl outline-none focus:ring-2 focus:ring-brand-500 transition-all"
                             />
                         </div>
 
@@ -433,7 +433,7 @@ const HistoryPage = ({ userId }) => {
                             <div className="md:col-span-2 lg:col-span-4">
                                 <button
                                     onClick={clearFilters}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-500 hover:text-red-500 transition-colors"
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-500 hover:text-expense-500 transition-colors"
                                 >
                                     <X size={16} /> ล้างตัวกรองทั้งหมด
                                 </button>
@@ -445,25 +445,25 @@ const HistoryPage = ({ userId }) => {
 
             {/* Section 2: INCOME/EXPENSE */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-green-500 flex items-center justify-between">
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-income-500 flex items-center justify-between">
                     <div>
                         <p className="text-slate-500 font-medium">รายรับรวม</p>
                         <h3 className="text-3xl font-black text-slate-800 mt-1">
                             ฿{totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h3>
                     </div>
-                    <ArrowUpCircle size={48} className="text-green-500 opacity-20" />
+                    <ArrowUpCircle size={48} className="text-income-500 opacity-20" />
                 </div>
 
                 {/* Card รายจ่าย */}
-                <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-red-500 flex items-center justify-between">
+                <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-expense-500 flex items-center justify-between">
                     <div>
                         <p className="text-slate-500 font-medium">รายจ่ายรวม</p>
                         <h3 className="text-3xl font-black text-slate-800 mt-1">
                             ฿{totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </h3>
                     </div>
-                    <ArrowDownCircle size={48} className="text-red-500 opacity-20" />
+                    <ArrowDownCircle size={48} className="text-expense-500 opacity-20" />
                 </div>
             </div>
 
@@ -481,8 +481,8 @@ const HistoryPage = ({ userId }) => {
 
                 {/* แถบเมื่อเลือกหลายรายการ */}
                 {selectedIds.size > 0 && (
-                    <div className="px-6 py-3 bg-indigo-50 border-b border-indigo-100 flex flex-wrap items-center justify-between gap-3 animate-zoom-in">
-                        <span className="text-sm font-semibold text-indigo-700">
+                    <div className="px-6 py-3 bg-brand-50 border-b border-brand-100 flex flex-wrap items-center justify-between gap-3 animate-zoom-in">
+                        <span className="text-sm font-semibold text-brand-700">
                             เลือกแล้ว {selectedIds.size} รายการ
                         </span>
                         <div className="flex items-center gap-2">
@@ -495,7 +495,7 @@ const HistoryPage = ({ userId }) => {
                             <button
                                 onClick={handleBulkDelete}
                                 disabled={bulkDeleting}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-red-500 rounded-xl hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-expense-500 rounded-xl hover:bg-expense-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
                                 <Trash2 size={16} />
                                 {bulkDeleting ? 'กำลังลบ...' : `ลบ ${selectedIds.size} รายการ`}
@@ -511,7 +511,7 @@ const HistoryPage = ({ userId }) => {
                                 <th className="px-6 py-4 w-12">
                                     <input
                                         type="checkbox"
-                                        className="w-4 h-4 accent-indigo-600 cursor-pointer align-middle"
+                                        className="w-4 h-4 accent-brand-600 cursor-pointer align-middle"
                                         checked={content.length > 0 && content.every((t) => selectedIds.has(t.id))}
                                         onChange={() => toggleSelectPage(content)}
                                         disabled={content.length === 0}
@@ -544,11 +544,11 @@ const HistoryPage = ({ userId }) => {
                                     {hasQuery ? 'ไม่พบรายการที่ตรงกับเงื่อนไข' : 'ยังไม่มีรายการธุรกรรม'}
                                 </td></tr>
                             ) : content.map((item) => (
-                                <tr key={item.id} className={`transition-all ${selectedIds.has(item.id) ? 'bg-indigo-50/60' : 'hover:bg-slate-50/50'}`}>
+                                <tr key={item.id} className={`transition-all ${selectedIds.has(item.id) ? 'bg-brand-50/60' : 'hover:bg-slate-50/50'}`}>
                                     <td className="px-6 py-4">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4 accent-indigo-600 cursor-pointer align-middle"
+                                            className="w-4 h-4 accent-brand-600 cursor-pointer align-middle"
                                             checked={selectedIds.has(item.id)}
                                             onChange={() => toggleSelect(item.id)}
                                         />
@@ -558,25 +558,25 @@ const HistoryPage = ({ userId }) => {
                                         {formatDate(item.transactionDate)}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.categoryType === 'INCOME' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${item.categoryType === 'INCOME' ? 'bg-income-100 text-income-600' : 'bg-expense-100 text-expense-600'}`}>
                                             {item.categoryName}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-slate-700 font-medium">{item.description}</td>
-                                    <td className={`px-6 py-4 text-right font-black ${item.categoryType === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
+                                    <td className={`px-6 py-4 text-right font-black ${item.categoryType === 'INCOME' ? 'text-income-600' : 'text-expense-600'}`}>
                                         {item.categoryType === 'INCOME' ? '+' : '-'}{item.amount.toLocaleString()}
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex justify-center gap-2">
                                             <button
                                                 onClick={() => handleEdit(item, categories)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                className="p-2 text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                             >
                                                 <Edit2 size={18} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(item.id)}
-                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                className="p-2 text-expense-600 hover:bg-expense-50 rounded-lg transition-colors"
                                             >
                                                 <Trash2 size={18} />
                                             </button>
@@ -614,7 +614,7 @@ const HistoryPage = ({ userId }) => {
                                         )}
                                         <button
                                             onClick={() => setCurrentPage(p)}
-                                            className={`min-w-9 h-9 px-3 rounded-xl text-sm font-semibold transition-all ${safePage === p ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                                            className={`min-w-9 h-9 px-3 rounded-xl text-sm font-semibold transition-all ${safePage === p ? 'bg-brand-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                                         >
                                             {p}
                                         </button>

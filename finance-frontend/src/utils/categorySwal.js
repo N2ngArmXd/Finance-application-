@@ -26,8 +26,8 @@ export const showAddCategoryModal = (onSuccess) => {
                             <div 
                                 onclick="window.selectSwalIcon('${icon.name}')"
                                 id="icon-btn-${icon.name}"
-                                class="icon-option cursor-pointer text-2xl p-2 flex items-center justify-center rounded-xl hover:bg-indigo-100 transition-all 
-                                ${icon.name === window.currentSelectedIcon ? 'bg-indigo-600 text-white shadow-lg' : 'bg-white'}"
+                                class="icon-option cursor-pointer text-2xl p-2 flex items-center justify-center rounded-xl hover:bg-brand-100 transition-all 
+                                ${icon.name === window.currentSelectedIcon ? 'bg-brand-600 text-white shadow-lg' : 'bg-white'}"
                             >
                                 ${icon.emoji}
                             </div>
@@ -55,19 +55,19 @@ export const showAddCategoryModal = (onSuccess) => {
                 window.currentSelectedIcon = iconName;
                 // ลบคลาสที่เลือกอยู่ออกทั้งหมด
                 document.querySelectorAll('.icon-option').forEach(el => {
-                    el.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg');
+                    el.classList.remove('bg-brand-600', 'text-white', 'shadow-lg');
                     el.classList.add('bg-white');
                 });
                 // เพิ่มคลาสให้ตัวที่ถูกเลือก
                 const selectedEl = document.getElementById(`icon-btn-${iconName}`);
                 selectedEl.classList.remove('bg-white');
-                selectedEl.classList.add('bg-indigo-600', 'text-white', 'shadow-lg');
+                selectedEl.classList.add('bg-brand-600', 'text-white', 'shadow-lg');
             };
         },
         showCancelButton: true,
         confirmButtonText: 'บันทึกรายการ',
         cancelButtonText: 'ปิด',
-        confirmButtonColor: '#4F46E5',
+        confirmButtonColor: '#12305C',
         cancelButtonColor: '#94a3b8',
         customClass: {
             popup: 'rounded-[2rem] p-6',
@@ -104,7 +104,7 @@ export const showAddCategoryModal = (onSuccess) => {
                 icon: 'success',
                 title: 'สำเร็จ!',
                 text: 'เพิ่มหมวดหมู่ใหม่เรียบร้อยแล้ว',
-                confirmButtonColor: '#4F46E5',
+                confirmButtonColor: '#12305C',
             });
             onSuccess();
             delete window.selectSwalIcon;

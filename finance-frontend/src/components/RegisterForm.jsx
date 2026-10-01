@@ -103,7 +103,7 @@ export default function RegisterForm({ onGoToLogin }) {
                     title: 'สมัครสมาชิกเสร็จสิ้น!',
                     text: 'คุณสามารถเข้าสู่ระบบเพื่อเริ่มต้นใช้งานได้ทันที',
                     confirmButtonText: 'ตกลง',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#12305C'
                 });
                 onGoToLogin();
             }
@@ -122,7 +122,7 @@ export default function RegisterForm({ onGoToLogin }) {
     return (
         <div className="min-h-screen h-screen flex bg-white overflow-hidden">
             {/* ฝั่งซ้าย: โลโก้และข้อความต้อนรับ (พื้นสีคราม) */}
-            <div className="hidden lg:flex w-1/2 bg-indigo-600 p-12 flex-col justify-between rounded-r-[4rem] text-white">
+            <div className="hidden lg:flex w-1/2 bg-brand-600 p-12 flex-col justify-between rounded-r-[4rem] text-white">
                 <div className="inline-flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
                         <Wallet size={20} />
@@ -137,42 +137,42 @@ export default function RegisterForm({ onGoToLogin }) {
                     <h2 className="text-5xl font-black leading-tight">
                         มาเริ่มต้น<br />สร้างบัญชีใหม่กัน!
                     </h2>
-                    <p className="text-indigo-100 text-lg max-w-md font-medium">
+                    <p className="text-brand-100 text-lg max-w-md font-medium">
                         จัดการการเงินของคุณให้เป็นเรื่องง่ายและชัดเจน <br />สมัครสมาชิกเพื่อใช้งานได้เลย
                     </p>
                 </div>
 
-                <p className="text-sm text-indigo-200">© 2026 Finance Application. Clarity in Wealth.</p>
+                <p className="text-sm text-brand-200">© 2026 Finance Application. Clarity in Wealth.</p>
             </div>
 
             {/* ฝั่งขวา: ฟอร์มสมัครสมาชิก */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative overflow-y-auto">
-                <div className="w-full max-w-lg bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-100 border border-slate-100 relative my-auto">
+                <div className="w-full max-w-lg bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-brand-100 border border-slate-100 relative my-auto">
                     {/* ส่วนหัวบอกสถานะ Progress Bar (1 -> 2 -> 3) */}
                     <div className="mb-8 flex justify-between text-xs font-bold text-slate-300 px-4 relative">
                         {/* เส้นเชื่อม */}
                         <div className="absolute top-1/2 left-8 right-8 h-[2px] bg-slate-100 -z-10 -translate-y-1/2"></div>
 
                         {/* Step 1 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 1 ? 'text-indigo-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100'}`}>1</div>
+                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 1 ? 'text-brand-600' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>1</div>
                             <span>บัญชี</span>
                         </div>
                         {/* Step 2 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 2 ? 'text-indigo-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100'}`}>2</div>
+                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 2 ? 'text-brand-600' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>2</div>
                             <span>ข้อมูลส่วนตัว</span>
                         </div>
                         {/* Step 3 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 3 ? 'text-indigo-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100'}`}>3</div>
+                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 3 ? 'text-brand-600' : ''}`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>3</div>
                             <span>ที่อยู่</span>
                         </div>
                     </div>
 
                     <form onSubmit={handleNext} className="space-y-6">
                         {error && (
-                            <div className="p-4 bg-red-50 text-red-500 text-xs font-bold rounded-2xl text-center border border-red-100 animate-in fade-in zoom-in duration-300">
+                            <div className="p-4 bg-expense-50 text-expense-500 text-xs font-bold rounded-2xl text-center border border-expense-100 animate-in fade-in zoom-in duration-300">
                                 {error}
                             </div>
                         )}
@@ -185,15 +185,15 @@ export default function RegisterForm({ onGoToLogin }) {
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 ml-4">ชื่อผู้ใช้งาน</label>
-                                    <input type="text" name="username" value={formData.username} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="Username" />
+                                    <input type="text" name="username" value={formData.username} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="Username" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 ml-4">รหัสผ่าน</label>
-                                    <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="••••••••" />
+                                    <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="••••••••" />
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 ml-4">อีเมล</label>
-                                    <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="your@email.com" />
+                                    <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="your@email.com" />
                                 </div>
                             </div>
                         )}
@@ -207,26 +207,26 @@ export default function RegisterForm({ onGoToLogin }) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">คำนำหน้า</label>
-                                        <input type="text" name="userPrefix" value={formData.userPrefix} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="นาย, นาง, นางสาว" />
+                                        <input type="text" name="userPrefix" value={formData.userPrefix} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="นาย, นาง, นางสาว" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">ชื่อเล่น</label>
-                                        <input type="text" name="userNickname" value={formData.userNickname} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="ชื่อเล่น" />
+                                        <input type="text" name="userNickname" value={formData.userNickname} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="ชื่อเล่น" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">ชื่อจริง</label>
-                                        <input type="text" name="userFirstName" value={formData.userFirstName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="ชื่อจริง" />
+                                        <input type="text" name="userFirstName" value={formData.userFirstName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="ชื่อจริง" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">นามสกุล</label>
-                                        <input type="text" name="userLastName" value={formData.userLastName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="นามสกุล" />
+                                        <input type="text" name="userLastName" value={formData.userLastName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="นามสกุล" />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-600 ml-4">เบอร์โทรศัพท์</label>
-                                    <input type="tel" name="userPhone" value={formData.userPhone} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" placeholder="08x-xxx-xxxx" />
+                                    <input type="tel" name="userPhone" value={formData.userPhone} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="08x-xxx-xxxx" />
                                 </div>
                             </div>
                         )}
@@ -240,41 +240,41 @@ export default function RegisterForm({ onGoToLogin }) {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">บ้านเลขที่</label>
-                                        <input type="text" name="houseNo" value={formData.houseNo} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="houseNo" value={formData.houseNo} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">หมู่ที่</label>
-                                        <input type="text" name="moo" value={formData.moo} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="moo" value={formData.moo} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">ตรอก/ซอย</label>
-                                        <input type="text" name="alley" value={formData.alley} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="alley" value={formData.alley} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">ถนน</label>
-                                        <input type="text" name="road" value={formData.road} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="road" value={formData.road} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">ตำบล/แขวง</label>
-                                        <input type="text" name="subDistrict" value={formData.subDistrict} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="subDistrict" value={formData.subDistrict} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">อำเภอ/เขต</label>
-                                        <input type="text" name="district" value={formData.district} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="district" value={formData.district} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">จังหวัด</label>
-                                        <input type="text" name="province" value={formData.province} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="province" value={formData.province} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-bold text-slate-600 ml-4">รหัสไปรษณีย์</label>
-                                        <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm" />
+                                        <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
                                     </div>
                                 </div>
                             </div>
@@ -289,7 +289,7 @@ export default function RegisterForm({ onGoToLogin }) {
                                 {step > 1 ? 'ย้อนกลับ' : 'กลับไปหน้าเข้าสู่ระบบ'}
                             </button>
 
-                            <button type="submit" disabled={loading} className="flex-1 py-4 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all flex items-center justify-center gap-2 group disabled:bg-indigo-400 disabled:cursor-not-allowed">
+                            <button type="submit" disabled={loading} className="flex-1 py-4 bg-brand-600 text-white rounded-full font-bold hover:bg-brand-700 shadow-xl shadow-brand-200 transition-all flex items-center justify-center gap-2 group disabled:bg-brand-400 disabled:cursor-not-allowed">
                                 {loading ? 'กำลังโหลด...' : (step === 3 ? 'ยืนยันการสมัคร' : 'ถัดไป')}
                                 {(!loading && step !== 3) && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                             </button>

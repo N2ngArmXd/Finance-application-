@@ -100,7 +100,7 @@ export default function TransactionPage({ userId }) {
         // ยืนยันก่อนบันทึกทุกครั้ง
         const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
         const typeLabel = isExpense ? 'รายจ่าย' : 'รายรับ';
-        const amountColor = isExpense ? '#ef4444' : '#22c55e';
+        const amountColor = isExpense ? '#C2412D' : '#0F7A55';
         const summaryHtml = `
             <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
                 <div><span style="color:#94a3b8;">ประเภท:</span> <b>${typeLabel}</b></div>
@@ -163,7 +163,7 @@ export default function TransactionPage({ userId }) {
                         <button
                             type="button"
                             onClick={() => handleSelectType('EXPENSE')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${isExpense ? 'bg-red-500 text-white shadow' : 'text-slate-500'
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${isExpense ? 'bg-expense-500 text-white shadow' : 'text-slate-500'
                                 }`}
                         >
                             <ArrowDownCircle size={20} /> รายจ่าย
@@ -171,7 +171,7 @@ export default function TransactionPage({ userId }) {
                         <button
                             type="button"
                             onClick={() => handleSelectType('INCOME')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${!isExpense ? 'bg-green-500 text-white shadow' : 'text-slate-500'
+                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${!isExpense ? 'bg-income-500 text-white shadow' : 'text-slate-500'
                                 }`}
                         >
                             <ArrowUpCircle size={20} /> รายรับ
@@ -193,7 +193,7 @@ export default function TransactionPage({ userId }) {
                                             type="button"
                                             onClick={() => setSelectedCategoryId(cat.id)}
                                             className={`flex flex-col items-center justify-center gap-1.5 min-h-[82px] px-1 py-2 rounded-2xl border text-center transition-all ${active
-                                                    ? 'border-indigo-500 border-2 bg-indigo-50 text-indigo-600'
+                                                    ? 'border-brand-500 border-2 bg-brand-50 text-brand-600'
                                                     : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                                 }`}
                                         >
@@ -213,11 +213,11 @@ export default function TransactionPage({ userId }) {
                         <label className="block text-sm font-bold text-slate-700 mb-2">จำนวนเงิน</label>
                         <div
                             className={`flex items-center gap-2 rounded-2xl border-2 px-4 py-3 bg-slate-50 transition-all focus-within:ring-2 ${isExpense
-                                    ? 'border-red-200 focus-within:border-red-400 focus-within:ring-red-100'
-                                    : 'border-green-200 focus-within:border-green-400 focus-within:ring-green-100'
+                                    ? 'border-expense-200 focus-within:border-expense-400 focus-within:ring-expense-100'
+                                    : 'border-income-200 focus-within:border-income-400 focus-within:ring-income-100'
                                 }`}
                         >
-                            <span className={`text-2xl font-black ${isExpense ? 'text-red-400' : 'text-green-400'}`}>฿</span>
+                            <span className={`text-2xl font-black ${isExpense ? 'text-expense-400' : 'text-income-400'}`}>฿</span>
                             <input
                                 type="number"
                                 inputMode="decimal"
@@ -227,7 +227,7 @@ export default function TransactionPage({ userId }) {
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 placeholder="0.00"
-                                className={`flex-1 min-w-0 text-right text-3xl md:text-4xl font-black bg-transparent outline-none placeholder:text-slate-300 ${isExpense ? 'text-red-500' : 'text-green-500'
+                                className={`flex-1 min-w-0 text-right text-3xl md:text-4xl font-black bg-transparent outline-none placeholder:text-slate-300 ${isExpense ? 'text-expense-500' : 'text-income-500'
                                     }`}
                             />
                             <span className="text-sm text-slate-400 font-medium">บาท</span>
@@ -241,7 +241,7 @@ export default function TransactionPage({ userId }) {
                             <button
                                 type="button"
                                 onClick={() => setDate(today)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === today ? 'bg-indigo-50 text-indigo-600 border-indigo-300' : 'bg-white text-slate-500 border-slate-200'
+                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === today ? 'bg-brand-50 text-brand-600 border-brand-300' : 'bg-white text-slate-500 border-slate-200'
                                     }`}
                             >
                                 วันนี้
@@ -249,7 +249,7 @@ export default function TransactionPage({ userId }) {
                             <button
                                 type="button"
                                 onClick={() => setDate(yesterday)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === yesterday ? 'bg-indigo-50 text-indigo-600 border-indigo-300' : 'bg-white text-slate-500 border-slate-200'
+                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === yesterday ? 'bg-brand-50 text-brand-600 border-brand-300' : 'bg-white text-slate-500 border-slate-200'
                                     }`}
                             >
                                 เมื่อวาน
@@ -261,7 +261,7 @@ export default function TransactionPage({ userId }) {
                                     max={today}
                                     value={date}
                                     onChange={(e) => setDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2 rounded-full text-sm bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="pl-9 pr-3 py-2 rounded-full text-sm bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500"
                                 />
                             </div>
                         </div>
@@ -277,14 +277,14 @@ export default function TransactionPage({ userId }) {
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="เช่น ข้าวเที่ยง, ค่ารถ..."
-                            className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                            className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none"
                         />
                     </div>
 
                     <button
                         type="submit"
                         disabled={loading || fetching}
-                        className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loading ? 'bg-slate-400' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'
+                        className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loading ? 'bg-slate-400' : 'bg-brand-600 hover:bg-brand-700 shadow-brand-100'
                             }`}
                     >
                         {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
@@ -317,7 +317,7 @@ export default function TransactionPage({ userId }) {
                                     </p>
                                 </div>
                                 <span
-                                    className={`text-sm font-bold ${t.categoryType === 'INCOME' ? 'text-green-600' : 'text-red-500'
+                                    className={`text-sm font-bold ${t.categoryType === 'INCOME' ? 'text-income-600' : 'text-expense-500'
                                         }`}
                                 >
                                     {t.categoryType === 'INCOME' ? '+' : '-'}
