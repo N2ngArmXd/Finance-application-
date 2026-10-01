@@ -1,10 +1,13 @@
 package com.example.finance_app.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
+import com.example.finance_app.dto.response.AuthResponse;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.UsersRepository;
 
@@ -12,10 +15,30 @@ import jakarta.transaction.Transactional;
 
 @Service
 @Transactional
-public class RegisterService {
+public class AuthService {
 
     @Autowired
-    private UsersRepository userRepository;
+    private UsersRepository usersRepository;
+
+    // ====================== Login ======================
+
+    public AuthResponse login(LoginRequest req) {
+
+        Users user = usersRepository.findByUsername(req.getUsername());
+
+        if (user != null && user.getPassword().equals(req.getPassword())) {
+
+            AuthResponse res = new AuthResponse();
+            res.setId(user.getId());
+            res.setUsername(user.getUsername());
+            res.setMessage("เข้าสู่ระบบสำเร็จ");
+            return res;
+        }
+
+        throw new RuntimeException("Username หรือ Password ไม่ถูกต้อง");
+    }
+
+    // ====================== Register ======================
 
     // Step 1 : สร้าง User พื้นฐานและคืนค่า ID
     public Long registerStep1(RegisterRequest request) {
@@ -26,7 +49,7 @@ public class RegisterService {
         user.setPassword(request.getPassword());
         user.setEmail(request.getEmail());
 
-        Users savedUser = userRepository.save(user);
+        Users savedUser = usersRepository.save(user);
 
         return savedUser.getId();
     }
@@ -35,14 +58,14 @@ public class RegisterService {
         Long newId;
         do {
             newId = ThreadLocalRandom.current().nextLong(100000L, 1000000L);
-        } while (userRepository.existsById(newId));
+        } while (usersRepository.existsById(newId));
         return newId;
     }
 
     // Step 2 : ข้อมูลส่วนตัว
     public void registerStep2(Long userId, RegisterRequest request) {
 
-        Users user = userRepository.findById(userId)
+        Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
 
         user.setProfileImage(request.getProfileImage());
@@ -53,13 +76,13 @@ public class RegisterService {
         user.setUserNickName(request.getUserNickName());
         user.setUserPhone(request.getUserPhone());
 
-        userRepository.save(user);
+        usersRepository.save(user);
     }
 
     // Step 3 : ข้อมูลที่อยู่
     public void registerStep3(Long userId, RegisterRequest request) {
 
-        Users user = userRepository.findById(userId)
+        Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
 
         user.setProvince(request.getProvince());
@@ -71,6 +94,6 @@ public class RegisterService {
         user.setHouseNo(request.getHouseNo());
         user.setPostalCode(request.getPostalCode());
 
-        userRepository.save(user);
+        usersRepository.save(user);
     }
 }

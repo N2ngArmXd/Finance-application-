@@ -16,7 +16,7 @@ import lombok.Data;
 @Entity
 @Table(name = "transactions", schema = "\"finance-app\"")
 public class Transaction {
-    // id สร้างเองแบบ 14 หลัก: ประเภท(1) + DDMMYY(6) + สุ่ม(7) — ดู FinanceService
+    // id สร้างเองแบบ 14 หลัก: ประเภท(1) + DDMMYY(6) + สุ่ม(7) — ดู TransactionService
     @Id
     private Long id;
 
