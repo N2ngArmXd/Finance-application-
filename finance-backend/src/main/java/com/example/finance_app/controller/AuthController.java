@@ -9,22 +9,34 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
-import com.example.finance_app.service.RegisterService;
+import com.example.finance_app.service.AuthService;
 
 @RestController
-@RequestMapping("/finance-app/register")
-@CrossOrigin("*")
-public class RegisterController {
+@RequestMapping("/finance-app")
+@CrossOrigin(origins = "*")
+public class AuthController {
 
     @Autowired
-    private RegisterService registerService;
+    private AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+        try {
+            return ResponseEntity.ok(authService.login(req));
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body(e.getMessage());
+        }
+    }
+
+    // ===================== Register =====================
 
     // Step 1
-    @PostMapping("/step1")
+    @PostMapping("/register/step1")
     public ResponseEntity<Long> registerStep1(@RequestBody RegisterRequest request) {
         try {
-            Long userId = registerService.registerStep1(request);
+            Long userId = authService.registerStep1(request);
             return ResponseEntity.ok(userId);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -32,24 +44,25 @@ public class RegisterController {
     }
 
     // Step 2
-    @PostMapping("/step2/{userId}")
+    @PostMapping("/register/step2/{userId}")
     public ResponseEntity<String> registerStep2(
             @PathVariable Long userId,
             @RequestBody RegisterRequest request) {
         try {
-            registerService.registerStep2(userId, request);
+            authService.registerStep2(userId, request);
             return ResponseEntity.ok("Step 2 completed successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
-    @PostMapping("/step3/{userId}")
+    // Step 3
+    @PostMapping("/register/step3/{userId}")
     public ResponseEntity<String> registerStep3(
             @PathVariable Long userId,
             @RequestBody RegisterRequest request) {
         try {
-            registerService.registerStep3(userId, request);
+            authService.registerStep3(userId, request);
             return ResponseEntity.ok("Registration completed successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

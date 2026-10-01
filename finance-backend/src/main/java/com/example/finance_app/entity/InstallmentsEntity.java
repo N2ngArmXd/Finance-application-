@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 @Table(name = "installments", schema = "finance-app")
 public class InstallmentsEntity {
 
-    // id สร้างเองแบบ 14 หลัก: วิธีคิด(1) + DDMMYY(6) + สุ่ม(7) — ดู FinanceService
+    // id สร้างเองแบบ 14 หลัก: วิธีคิด(1) + DDMMYY(6) + สุ่ม(7) — ดู InstallmentService
     @Id
     @Column(name = "installments_id")
     private Long installmentsId;
