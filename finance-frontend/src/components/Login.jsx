@@ -40,7 +40,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
         <div className="min-h-screen h-screen flex bg-white overflow-hidden">
 
             {/* ฝั่งซ้าย: โลโก้และข้อความต้อนรับ (พื้นสีคราม) */}
-            <div className="hidden lg:flex w-1/2 bg-indigo-600 p-12 flex-col justify-between rounded-r-[4rem] text-white">
+            <div className="hidden lg:flex w-1/2 bg-brand-600 p-12 flex-col justify-between rounded-r-[4rem] text-white">
                 <div className="inline-flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
                         <Wallet size={20} />
@@ -55,12 +55,12 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                     <h2 className="text-5xl font-black leading-tight">
                         ยินดีต้อนรับ<br />กลับมาอีกครั้ง!
                     </h2>
-                    <p className="text-indigo-100 text-lg max-w-md font-medium">
+                    <p className="text-brand-100 text-lg max-w-md font-medium">
                         จัดการการเงินของคุณให้เป็นเรื่องง่ายและชัดเจน <br />เข้าสู่ระบบเพื่อไปต่อ
                     </p>
                 </div>
 
-                <p className="text-sm text-indigo-200">© 2026 Finance Application. Clarity in Wealth.</p>
+                <p className="text-sm text-brand-200">© 2026 Finance Application. Clarity in Wealth.</p>
             </div>
 
             {/* ฝั่งขวา: ฟอร์มเข้าสู่ระบบ (พื้นสีขาว) */}
@@ -72,14 +72,14 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                     <button
                         type="button"
                         onClick={onGoToRegister}
-                        className="text-sm font-bold text-indigo-600 hover:text-indigo-700"
+                        className="text-sm font-bold text-brand-600 hover:text-brand-700"
                     >
                         สมัครสมาชิกใหม่
                     </button>
                 </div>
 
                 {/* Form Wrapper - จัดกลางและจำกัดความกว้าง */}
-                <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-indigo-100 border border-slate-100">
+                <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-brand-100 border border-slate-100">
                     <div className="mb-10">
                         <h2 className="text-3xl font-black text-slate-800">เข้าสู่ระบบ</h2>
                         <p className="text-slate-400 text-base mt-1.5">กรอกข้อมูลเพื่อเข้าสู่บัญชีของคุณ</p>
@@ -87,7 +87,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         {error && (
-                            <div className="p-4 bg-red-50 text-red-500 text-xs font-bold rounded-2xl text-center border border-red-100">
+                            <div className="p-4 bg-expense-50 text-expense-500 text-xs font-bold rounded-2xl text-center border border-expense-100">
                                 {error}
                             </div>
                         )}
@@ -104,7 +104,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                                 <input
                                     type="text"
                                     placeholder="Username or Email"
-                                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm leading-none"
+                                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm leading-none"
                                     /* ใส่ leading-none เพื่อให้ข้อความอยู่กลางที่สุด */
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -116,7 +116,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center px-4">
                                 <label className="text-sm font-bold text-slate-600">รหัสผ่าน</label>
-                                <button type="button" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">ลืมรหัสผ่าน?</button>
+                                <button type="button" className="text-xs font-bold text-brand-600 hover:text-brand-700">ลืมรหัสผ่าน?</button>
                             </div>
                             <div className="relative group">
                                 {/* ไอคอนแม่กุญแจ: ใช้ inset-y-0 และ flex เพื่อให้อยู่กลางแนวตั้งเป๊ะ */}
@@ -127,7 +127,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                                 <input
                                     type={showPassword ? "text" : "password"}
                                     placeholder="••••••••"
-                                    className="w-full pl-14 pr-14 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white focus:border-indigo-500 transition-all text-sm leading-none"
+                                    className="w-full pl-14 pr-14 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm leading-none"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
@@ -148,7 +148,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                         <div className="pt-6">
                             <button
                                 type="submit"
-                                className="w-full py-4 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 shadow-xl shadow-indigo-200 transition-all flex items-center justify-center gap-2 group"
+                                className="w-full py-4 bg-brand-600 text-white rounded-full font-bold hover:bg-brand-700 shadow-xl shadow-brand-200 transition-all flex items-center justify-center gap-2 group"
                             >
                                 เข้าสู่ระบบ
                                 <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { Save, Tag, DollarSign, Calendar, Percent, ListOrdered, CalendarDays, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Check, Plus, X, Pencil, Trash2, Lock } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
 
 const PAGE_SIZE = 10;
@@ -15,6 +15,7 @@ export default function Installments({ userId }) {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null); // null = สร้างใหม่, มีค่า = กำลังแก้ไข
     const [deletingId, setDeletingId] = useState(null);
+    const [closingId, setClosingId] = useState(null);
     const dateInputRef = useRef(null);
 
     const emptyForm = {
@@ -218,7 +219,7 @@ export default function Installments({ userId }) {
                 <div><span style="color:#94a3b8;">ดอกเบี้ย:</span> <b>${parseFloat(formData.interestRate || 0)}% ${formData.interestType === 'MONTHLY' ? '(ต่อเดือน)' : '(ต่อปี)'} · ${methodLabel}</b></div>
                 <div><span style="color:#94a3b8;">จำนวนงวด:</span> <b>${formData.installmentMonths} งวด</b></div>
                 <div><span style="color:#94a3b8;">เริ่มชำระงวดแรก:</span> <b>${formatDate(formData.startDate)}</b></div>
-                <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid #e2e8f0;"><span style="color:#94a3b8;">ยอดผ่อนต่อเดือน:</span> <b style="color:#4F46E5;">${formatCurrency(previewMonthlyAmount)}</b></div>
+                <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid #e2e8f0;"><span style="color:#94a3b8;">ยอดผ่อนต่อเดือน:</span> <b style="color:#12305C;">${formatCurrency(previewMonthlyAmount)}</b></div>
             </div>
         `;
         const confirmResult = await showConfirm(
@@ -351,7 +352,7 @@ export default function Installments({ userId }) {
         };
     };
 
-    // สรุปยอดรวมของทุกรายการผ่อน
+    // สรุปยอดรวม — นับเฉพาะรายการที่กำลังผ่อนอยู่ (ไม่รวมที่จ่ายครบ/ปิดยอดแล้ว)
     const calculateOverallSummary = () => {
         let totalPayable = 0;
         let totalPaid = 0;
@@ -367,7 +368,7 @@ export default function Installments({ userId }) {
         const nextMonth = nextMonthDate.getMonth();
         const nextYear = nextMonthDate.getFullYear();
 
-        installmentsList.forEach((item) => {
+        activeInstallments.forEach((item) => {
             const months = item.installmentMonths || 0;
             const monthly = item.monthlyAmount || 0;
 
@@ -422,7 +423,7 @@ export default function Installments({ userId }) {
                 <div><span style="color:#94a3b8;">รายการ:</span> <b>${item.installmentsName}</b></div>
                 <div><span style="color:#94a3b8;">งวดที่:</span> <b>${row.month} / ${item.installmentMonths}</b></div>
                 <div><span style="color:#94a3b8;">กำหนดชำระ:</span> <b>${formatDate(row.date)}</b></div>
-                <div><span style="color:#94a3b8;">ค่างวด:</span> <b style="color:#4F46E5;">${formatCurrency(row.payment)}</b></div>
+                <div><span style="color:#94a3b8;">ค่างวด:</span> <b style="color:#12305C;">${formatCurrency(row.payment)}</b></div>
             </div>
         `;
         const confirmResult = await showConfirm(actionLabel, '', detailHtml, 'question');
@@ -497,14 +498,62 @@ export default function Installments({ userId }) {
         }
     };
 
+    const handleClose = async (item) => {
+        const paidCount = countPaidPeriods(item);
+        const remainingPeriods = Math.max((item.installmentMonths || 0) - paidCount, 0);
+
+        const detailHtml = `
+            <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
+                <div><span style="color:#94a3b8;">รายการ:</span> <b>${item.installmentsName}</b></div>
+                <div><span style="color:#94a3b8;">จ่ายแล้ว:</span> <b>${paidCount} / ${item.installmentMonths} งวด</b></div>
+                <div><span style="color:#94a3b8;">ค่างวดคงเหลือ:</span> <b style="color:#C2412D;">${formatCurrency(item.monthlyAmount * remainingPeriods)}</b> (${remainingPeriods} งวด)</div>
+            </div>
+        `;
+        const confirmResult = await showConfirm(
+            'ยืนยันการปิดยอด?',
+            '',
+            detailHtml,
+            'warning',
+            'bg-expense-500 text-white hover:bg-expense-600'
+        );
+        if (!confirmResult.isConfirmed) return;
+
+        setClosingId(item.installmentsId);
+        try {
+            const response = await fetch('/api/finance-app/installments/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ installmentsId: item.installmentsId, userId })
+            });
+
+            if (response.ok) {
+                showSuccess('ปิดยอดเรียบร้อย!', `ปิดยอด "${item.installmentsName}" แล้ว`);
+                if (expandedId === item.installmentsId) setExpandedId(null);
+                // รายการที่ปิดยอดจะย้ายไปตาราง "ผ่อนเสร็จแล้ว" — เปิดตารางให้เห็นทันที
+                setShowCompleted(true);
+                await fetchInstallments();
+            } else {
+                const errorText = await response.text();
+                showError('ปิดยอดไม่สำเร็จ', errorText || 'กรุณาลองใหม่อีกครั้ง');
+            }
+        } catch (error) {
+            console.error('Close installment error:', error);
+            showError('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        } finally {
+            setClosingId(null);
+        }
+    };
+
     // นับงวดที่จ่ายแล้ว เพื่อเช็คว่าผ่อนครบหรือยัง
     const countPaidPeriods = (item) => (item.paidPeriods || '')
         .split(',')
         .map((s) => parseInt(s.trim(), 10))
         .filter((n) => !isNaN(n)).length;
 
+    // ผ่อนเสร็จ = จ่ายครบทุกงวด หรือ ปิดยอดแล้ว (CLOSED)
     const isInstallmentCompleted = (item) =>
-        (item.installmentMonths || 0) > 0 && countPaidPeriods(item) >= item.installmentMonths;
+        item.status === 'CLOSED'
+        || ((item.installmentMonths || 0) > 0 && countPaidPeriods(item) >= item.installmentMonths);
 
     // แยกรายการที่ผ่อนเสร็จแล้วออกจากรายการที่ยังผ่อนอยู่
     const activeInstallments = installmentsList.filter((item) => !isInstallmentCompleted(item));
@@ -547,12 +596,12 @@ export default function Installments({ userId }) {
                                 <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <Tag size={18} className="text-indigo-500" /> ชื่อรายการผ่อนชำระ
+                                <Tag size={18} className="text-brand-500" /> ชื่อรายการผ่อนชำระ
                             </label>
                             <input
                                 type="text"
                                 required
-                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none"
                                 placeholder="เช่น ผ่อนโทรศัพท์, ผ่อนรถ"
                                 value={formData.installmentsName}
                                 onChange={(e) => setFormData({ ...formData, installmentsName: e.target.value })}
@@ -561,14 +610,14 @@ export default function Installments({ userId }) {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <DollarSign size={18} className="text-indigo-500" /> ยอดจัด / เงินต้น (บาท)
+                                <DollarSign size={18} className="text-brand-500" /> ยอดจัด / เงินต้น (บาท)
                             </label>
                             <input
                                 type="number"
                                 required
                                 min="1"
                                 step="0.01"
-                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-semibold"
+                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none text-lg font-semibold"
                                 placeholder="0.00"
                                 value={formData.totalAmount}
                                 onChange={(e) => setFormData({ ...formData, totalAmount: e.target.value })}
@@ -579,10 +628,10 @@ export default function Installments({ userId }) {
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center justify-between">
                                     <span className="flex items-center gap-2">
-                                        <Percent size={18} className="text-indigo-500" /> อัตราดอกเบี้ย
+                                        <Percent size={18} className="text-brand-500" /> อัตราดอกเบี้ย
                                     </span>
                                 </label>
-                                <div className="flex bg-slate-50 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500 overflow-hidden">
+                                <div className="flex bg-slate-50 rounded-2xl focus-within:ring-2 focus-within:ring-brand-500 overflow-hidden">
                                     <input
                                         type="number"
                                         step="0.01"
@@ -604,13 +653,13 @@ export default function Installments({ userId }) {
                             </div>
                             <div>
                                 <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                    <ListOrdered size={18} className="text-indigo-500" /> จำนวนงวด (เดือน)
+                                    <ListOrdered size={18} className="text-brand-500" /> จำนวนงวด (เดือน)
                                 </label>
                                 <input
                                     type="number"
                                     required
                                     min="1"
-                                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none"
                                     placeholder="เช่น 10, 24, 36"
                                     value={formData.installmentMonths}
                                     onChange={(e) => setFormData({ ...formData, installmentMonths: e.target.value })}
@@ -620,7 +669,7 @@ export default function Installments({ userId }) {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <Percent size={18} className="text-indigo-500" /> วิธีคิดดอกเบี้ย
+                                <Percent size={18} className="text-brand-500" /> วิธีคิดดอกเบี้ย
                             </label>
                             <div className="grid grid-cols-2 gap-2 bg-slate-50 p-1.5 rounded-2xl">
                                 {[
@@ -634,12 +683,12 @@ export default function Installments({ userId }) {
                                             key={opt.value}
                                             onClick={() => setFormData({ ...formData, calculationMethod: opt.value })}
                                             className={`py-2.5 px-3 rounded-xl text-center transition-all ${active
-                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                ? 'bg-brand-600 text-white shadow-sm'
                                                 : 'text-slate-600 hover:bg-slate-100'
                                                 }`}
                                         >
                                             <span className="block font-bold text-sm">{opt.label}</span>
-                                            <span className={`block text-[11px] ${active ? 'text-indigo-100' : 'text-slate-400'}`}>{opt.sub}</span>
+                                            <span className={`block text-[11px] ${active ? 'text-brand-100' : 'text-slate-400'}`}>{opt.sub}</span>
                                         </button>
                                     );
                                 })}
@@ -648,11 +697,11 @@ export default function Installments({ userId }) {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <CalendarDays size={18} className="text-indigo-500" /> เริ่มชำระงวดแรก
+                                <CalendarDays size={18} className="text-brand-500" /> เริ่มชำระงวดแรก
                             </label>
                             <div
                                 onClick={openDatePicker}
-                                className="relative w-full p-4 bg-slate-50 rounded-2xl flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500"
+                                className="relative w-full p-4 bg-slate-50 rounded-2xl flex items-center justify-between cursor-pointer focus-within:ring-2 focus-within:ring-brand-500"
                             >
                                 <span className={formData.startDate ? 'text-slate-700' : 'text-slate-400'}>
                                     {formData.startDate ? formatDate(formData.startDate) : 'วว/ดด/ปปปป'}
@@ -672,10 +721,10 @@ export default function Installments({ userId }) {
 
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                                <Calendar size={18} className="text-indigo-500" /> รายละเอียดเพิ่มเติม (ถ้ามี)
+                                <Calendar size={18} className="text-brand-500" /> รายละเอียดเพิ่มเติม (ถ้ามี)
                             </label>
                             <textarea
-                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none"
                                 rows="2"
                                 placeholder="บันทึกช่วยจำ..."
                                 value={formData.description}
@@ -685,9 +734,9 @@ export default function Installments({ userId }) {
 
                         {/* สรุปข้อมูลเบื้องต้น */}
                         {previewSchedule.length > 0 && (
-                            <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                                <h3 className="font-bold text-indigo-800 mb-4 text-center">สรุปการคำนวณเบื้องต้น</h3>
-                                <div className="space-y-2 text-sm text-indigo-700">
+                            <div className="bg-brand-50 p-6 rounded-2xl border border-brand-100">
+                                <h3 className="font-bold text-brand-800 mb-4 text-center">สรุปการคำนวณเบื้องต้น</h3>
+                                <div className="space-y-2 text-sm text-brand-700">
                                     <div className="flex justify-between">
                                         <span>วิธีคิด:</span>
                                         <span className="font-semibold">{formData.calculationMethod === 'EFFECTIVE' ? 'ลดต้นลดดอก (Effective)' : 'คงที่ (Flat)'}</span>
@@ -700,7 +749,7 @@ export default function Installments({ userId }) {
                                         <span>ดอกเบี้ยรวม:</span>
                                         <span className="font-semibold">{formatCurrency(previewTotalInterest)}</span>
                                     </div>
-                                    <div className="flex justify-between font-bold text-lg pt-2 border-t border-indigo-200">
+                                    <div className="flex justify-between font-bold text-lg pt-2 border-t border-brand-200">
                                         <span>ยอดผ่อนต่อเดือน:</span>
                                         <span>{formatCurrency(previewMonthlyAmount)}</span>
                                     </div>
@@ -711,7 +760,7 @@ export default function Installments({ userId }) {
                         <button
                             type="submit"
                             disabled={loading || previewSchedule.length === 0}
-                            className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loading || previewSchedule.length === 0 ? 'bg-slate-400' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100'
+                            className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loading || previewSchedule.length === 0 ? 'bg-slate-400' : 'bg-brand-600 hover:bg-brand-700 shadow-brand-100'
                                 }`}
                         >
                             <Save size={20} />
@@ -740,7 +789,7 @@ export default function Installments({ userId }) {
                                             <tr key={row.month} className="hover:bg-slate-50">
                                                 <td className="px-4 py-3 font-semibold text-slate-700">{row.month}</td>
                                                 <td className="px-4 py-3 text-slate-600">{formatDate(row.date)}</td>
-                                                <td className="px-4 py-3 font-semibold text-indigo-600">{formatCurrency(row.payment)}</td>
+                                                <td className="px-4 py-3 font-semibold text-brand-600">{formatCurrency(row.payment)}</td>
                                                 <td className="px-4 py-3 text-slate-500">{formatCurrency(row.remaining)}</td>
                                             </tr>
                                         ))}
@@ -774,26 +823,26 @@ export default function Installments({ userId }) {
                                 <div className="text-xs text-slate-500 mb-1">ยอดต้องจ่ายทั้งหมด</div>
                                 <div className="font-black text-slate-700 text-2xl">{formatCurrency(summary.totalPayable)}</div>
                             </div>
-                            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
-                                <div className="text-xs text-amber-600 mb-1">ต้องจ่ายเดือนนี้</div>
-                                <div className="font-black text-amber-600 text-2xl">{formatCurrency(summary.thisMonthDue)}</div>
+                            <div className="bg-warn-50 p-4 rounded-2xl border border-warn-100 text-center">
+                                <div className="text-xs text-warn-600 mb-1">ต้องจ่ายเดือนนี้</div>
+                                <div className="font-black text-warn-600 text-2xl">{formatCurrency(summary.thisMonthDue)}</div>
                             </div>
-                            <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center">
-                                <div className="text-xs text-orange-600 mb-1">ต้องจ่ายเดือนหน้า</div>
-                                <div className="font-black text-orange-600 text-2xl">{formatCurrency(summary.nextMonthDue)}</div>
+                            <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100 text-center">
+                                <div className="text-xs text-brand-600 mb-1">ต้องจ่ายเดือนหน้า</div>
+                                <div className="font-black text-brand-600 text-2xl">{formatCurrency(summary.nextMonthDue)}</div>
                             </div>
-                            <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 text-center">
-                                <div className="text-xs text-emerald-600 mb-1">จ่ายไปแล้ว</div>
-                                <div className="font-black text-emerald-600 text-2xl">{formatCurrency(summary.totalPaid)}</div>
+                            <div className="bg-income-50 p-4 rounded-2xl border border-income-100 text-center">
+                                <div className="text-xs text-income-600 mb-1">จ่ายไปแล้ว</div>
+                                <div className="font-black text-income-600 text-2xl">{formatCurrency(summary.totalPaid)}</div>
                             </div>
-                            <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-center">
-                                <div className="text-xs text-indigo-600 mb-1">เหลือที่ต้องจ่าย</div>
-                                <div className="font-black text-indigo-600 text-2xl">{formatCurrency(summary.totalRemaining)}</div>
+                            <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100 text-center">
+                                <div className="text-xs text-brand-600 mb-1">เหลือที่ต้องจ่าย</div>
+                                <div className="font-black text-brand-600 text-2xl">{formatCurrency(summary.totalRemaining)}</div>
                             </div>
                         </div>
                         <div className="w-full bg-slate-200 rounded-full h-2.5 mt-4">
                             <div
-                                className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                                className="bg-income-500 h-2.5 rounded-full transition-all duration-500"
                                 style={{ width: `${paidPercent}%` }}
                             ></div>
                         </div>
@@ -811,7 +860,7 @@ export default function Installments({ userId }) {
                     <button
                         type="button"
                         onClick={openCreateModal}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-lg shadow-brand-100 transition-all"
                     >
                         <Plus size={18} /> เพิ่มรายการผ่อนใหม่
                     </button>
@@ -830,8 +879,8 @@ export default function Installments({ userId }) {
                                     const isExpanded = expandedId === item.installmentsId;
                                     const isCompleted = progress.paidCount >= progress.total;
                                     const statusBorder = isCompleted
-                                        ? 'border-emerald-400 bg-emerald-50/30'
-                                        : 'border-amber-400 bg-amber-50/30';
+                                        ? 'border-income-400 bg-income-50/30'
+                                        : 'border-warn-400 bg-warn-50/30';
 
                                     return (
                                         <div key={item.installmentsId} className={`border-2 ${statusBorder} rounded-2xl overflow-hidden hover:shadow-md transition-shadow`}>
@@ -849,15 +898,25 @@ export default function Installments({ userId }) {
                                                     </div>
                                                     <div className="flex items-start gap-3">
                                                         <div className="text-right">
-                                                            <div className="font-black text-indigo-600">{formatCurrency(item.monthlyAmount)}</div>
+                                                            <div className="font-black text-brand-600">{formatCurrency(item.monthlyAmount)}</div>
                                                             <div className="text-xs text-slate-500">ต่อเดือน ({item.installmentMonths} งวด)</div>
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             <button
                                                                 type="button"
+                                                                disabled={closingId === item.installmentsId}
+                                                                onClick={(e) => { e.stopPropagation(); handleClose(item); }}
+                                                                title="ปิดยอดรายการนี้"
+                                                                className="inline-flex items-center gap-1 px-3 py-1.5 mr-1 rounded-xl text-xs font-bold text-white bg-expense-500 hover:bg-expense-600 transition-colors disabled:opacity-50"
+                                                            >
+                                                                <Lock size={14} />
+                                                                {closingId === item.installmentsId ? 'กำลังปิด...' : 'ปิดยอด'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
                                                                 onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
                                                                 title="แก้ไขรายการ"
-                                                                className="p-2 rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                                                                className="p-2 rounded-xl text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
                                                             >
                                                                 <Pencil size={16} />
                                                             </button>
@@ -866,7 +925,7 @@ export default function Installments({ userId }) {
                                                                 disabled={deletingId === item.installmentsId}
                                                                 onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
                                                                 title="ลบรายการ"
-                                                                className="p-2 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                                                className="p-2 rounded-xl text-slate-400 hover:bg-expense-50 hover:text-expense-600 transition-colors disabled:opacity-50"
                                                             >
                                                                 <Trash2 size={16} />
                                                             </button>
@@ -876,7 +935,7 @@ export default function Installments({ userId }) {
                                                 <div className="flex justify-between items-center text-sm text-slate-600 bg-slate-50 p-2 rounded-lg mt-3">
                                                     <span>ยอดจัด: <span className="font-semibold">{formatCurrency(item.totalAmount)}</span></span>
                                                     <span className="flex items-center gap-2">
-                                                        <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 text-[11px] font-bold">
+                                                        <span className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-600 text-[11px] font-bold">
                                                             {item.calculationMethod === 'EFFECTIVE' ? 'ลดต้นลดดอก' : 'คงที่'}
                                                         </span>
                                                         <span>ดอกเบี้ย: <span className="font-semibold">{item.interestRate}% {item.interestType === 'MONTHLY' ? '(ต่อเดือน)' : '(ต่อปี)'}</span></span>
@@ -893,7 +952,7 @@ export default function Installments({ userId }) {
                                                         {/* Progress Bar — อิงจากงวดที่จ่ายจริง */}
                                                         <div className="w-full bg-slate-200 rounded-full h-2.5 mb-3">
                                                             <div
-                                                                className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                                                                className="bg-income-500 h-2.5 rounded-full transition-all duration-500"
                                                                 style={{ width: `${(progress.paidCount / progress.total) * 100}%` }}
                                                             ></div>
                                                         </div>
@@ -901,11 +960,11 @@ export default function Installments({ userId }) {
                                                         <div className="grid grid-cols-3 gap-3 text-center">
                                                             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                                                 <div className="text-xs text-slate-500 mb-1">ถึงกำหนดแล้ว</div>
-                                                                <div className="font-black text-indigo-600 text-xl">{progress.due} <span className="text-sm font-normal text-slate-500">งวด</span></div>
+                                                                <div className="font-black text-brand-600 text-xl">{progress.due} <span className="text-sm font-normal text-slate-500">งวด</span></div>
                                                             </div>
                                                             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                                                 <div className="text-xs text-slate-500 mb-1">จ่ายแล้ว</div>
-                                                                <div className="font-black text-emerald-600 text-xl">{progress.paidCount} <span className="text-sm font-normal text-slate-500">งวด</span></div>
+                                                                <div className="font-black text-income-600 text-xl">{progress.paidCount} <span className="text-sm font-normal text-slate-500">งวด</span></div>
                                                             </div>
                                                             <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                                                                 <div className="text-xs text-slate-500 mb-1">เหลืออีก</div>
@@ -935,10 +994,10 @@ export default function Installments({ userId }) {
                                                                         // งวดที่ยังไม่ถึงกำหนด และยังไม่จ่าย → ปิดปุ่มเป็นสีเทา
                                                                         const locked = !row.isDue && !row.paid;
                                                                         return (
-                                                                            <tr key={row.month} className={`hover:bg-slate-50 ${row.paid ? 'bg-emerald-50/60' : ''}`}>
+                                                                            <tr key={row.month} className={`hover:bg-slate-50 ${row.paid ? 'bg-income-50/60' : ''}`}>
                                                                                 <td className="px-4 py-3 font-semibold text-slate-700">{row.month}</td>
                                                                                 <td className="px-4 py-3 text-slate-600">{formatDate(row.date)}</td>
-                                                                                <td className="px-4 py-3 font-semibold text-indigo-600">{formatCurrency(row.payment)}</td>
+                                                                                <td className="px-4 py-3 font-semibold text-brand-600">{formatCurrency(row.payment)}</td>
                                                                                 <td className="px-4 py-3 text-slate-500">{formatCurrency(row.remaining)}</td>
                                                                                 <td className="px-4 py-3 text-center">
                                                                                     {row.paid ? (
@@ -947,7 +1006,7 @@ export default function Installments({ userId }) {
                                                                                             disabled={isProcessing}
                                                                                             onClick={() => handlePayPeriod(item, row)}
                                                                                             title="คลิกเพื่อยกเลิกสถานะจ่าย"
-                                                                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-50"
+                                                                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-income-100 text-income-700 hover:bg-income-200 transition-colors disabled:opacity-50"
                                                                                         >
                                                                                             <Check size={14} /> จ่ายแล้ว
                                                                                         </button>
@@ -965,7 +1024,7 @@ export default function Installments({ userId }) {
                                                                                             type="button"
                                                                                             disabled={isProcessing}
                                                                                             onClick={() => handlePayPeriod(item, row)}
-                                                                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                                                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
                                                                                         >
                                                                                             {isProcessing ? 'กำลังบันทึก...' : 'จ่ายไปแล้ว'}
                                                                                         </button>
@@ -1014,7 +1073,7 @@ export default function Installments({ userId }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => setCurrentPage(p)}
-                                                    className={`min-w-9 h-9 px-3 rounded-xl text-sm font-semibold transition-all ${safePage === p ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                                                    className={`min-w-9 h-9 px-3 rounded-xl text-sm font-semibold transition-all ${safePage === p ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                                                 >
                                                     {p}
                                                 </button>
@@ -1042,9 +1101,9 @@ export default function Installments({ userId }) {
                         className="w-full flex items-center justify-between gap-3 text-left"
                     >
                         <h2 className="text-xl font-bold text-slate-700 flex items-center gap-2">
-                            <Check size={20} className="text-emerald-500" />
+                            <Check size={20} className="text-income-500" />
                             ผ่อนเสร็จแล้ว
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold">
+                            <span className="px-2 py-0.5 rounded-full bg-income-100 text-income-600 text-xs font-bold">
                                 {completedInstallments.length}
                             </span>
                         </h2>
@@ -1068,33 +1127,49 @@ export default function Installments({ userId }) {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {completedInstallments.map((item) => (
-                                        <tr key={item.installmentsId} className="hover:bg-emerald-50/40">
+                                        <tr key={item.installmentsId} className="hover:bg-income-50/40">
                                             <td className="px-4 py-3 font-semibold text-slate-700">
                                                 {item.installmentsName}
-                                                <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-600 text-[11px] font-bold align-middle">
-                                                    <Check size={12} /> ครบแล้ว
-                                                </span>
+                                                {item.status === 'CLOSED' ? (
+                                                    <>
+                                                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-expense-100 text-expense-600 text-[11px] font-bold align-middle">
+                                                            <Lock size={12} /> ปิดยอด
+                                                        </span>
+                                                        {item.closedAt && (
+                                                            <div className="text-xs font-normal text-slate-400 mt-0.5">
+                                                                ปิดยอดเมื่อ {formatDate(item.closedAt)} · จ่ายแล้ว {countPaidPeriods(item)}/{item.installmentMonths} งวด
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-income-100 text-income-600 text-[11px] font-bold align-middle">
+                                                        <Check size={12} /> ครบแล้ว
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-slate-600">{formatCurrency(item.totalAmount)}</td>
-                                            <td className="px-4 py-3 font-semibold text-indigo-600">{formatCurrency(item.monthlyAmount)}</td>
+                                            <td className="px-4 py-3 font-semibold text-brand-600">{formatCurrency(item.monthlyAmount)}</td>
                                             <td className="px-4 py-3 text-slate-600">{item.installmentMonths} งวด</td>
                                             <td className="px-4 py-3 text-slate-600">{formatDate(item.startDate)}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <div className="inline-flex items-center gap-1">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openEditModal(item)}
-                                                        title="แก้ไขรายการ"
-                                                        className="p-2 rounded-xl text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                                                    >
-                                                        <Pencil size={16} />
-                                                    </button>
+                                                    {/* รายการที่ปิดยอดแล้วแก้ไขไม่ได้ (backend ปฏิเสธ) */}
+                                                    {item.status !== 'CLOSED' && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openEditModal(item)}
+                                                            title="แก้ไขรายการ"
+                                                            className="p-2 rounded-xl text-slate-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+                                                        >
+                                                            <Pencil size={16} />
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         disabled={deletingId === item.installmentsId}
                                                         onClick={() => handleDelete(item)}
                                                         title="ลบรายการ"
-                                                        className="p-2 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50"
+                                                        className="p-2 rounded-xl text-slate-400 hover:bg-expense-50 hover:text-expense-600 transition-colors disabled:opacity-50"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>

@@ -20,11 +20,11 @@ export const showSuccess = (title, text) => {
         icon: 'success',
         title: `<span class="text-slate-800 font-black">${title || 'สำเร็จ!'}</span>`,
         text: text,
-        iconColor: '#4F46E5',
+        iconColor: '#12305C',
         confirmButtonText: 'ตกลง',
         customClass: {
             popup: 'rounded-[2rem] p-8',
-            confirmButton: 'bg-indigo-600 text-white hover:bg-indigo-700 px-10 py-3 rounded-xl'
+            confirmButton: 'bg-brand-600 text-white hover:bg-brand-700 px-10 py-3 rounded-xl'
         }
     });
 };
@@ -37,25 +37,31 @@ export const showError = (title, text) => {
         confirmButtonText: 'ลองใหม่',
         customClass: {
             popup: 'rounded-[2rem] p-8',
-            confirmButton: 'bg-red-500 text-white hover:bg-red-600 px-10 py-3 rounded-xl'
+            confirmButton: 'bg-expense-500 text-white hover:bg-expense-600 px-10 py-3 rounded-xl'
         }
     });
 };
 
-export const showConfirm = (title, text, html, icon = 'warning') => {
+export const showConfirm = (
+    title,
+    text,
+    html,
+    icon = 'warning',
+    confirmButtonClass = 'bg-brand-600 text-white hover:bg-brand-700'
+) => {
     return MySwal.fire({
         title: `<span class="text-slate-800 font-black">${title}</span>`,
         text: html ? undefined : text,
         html: html || undefined,
         icon: icon,
-        iconColor: '#4F46E5',
+        iconColor: '#12305C',
         showCancelButton: true,
         confirmButtonText: 'ยืนยัน',
         cancelButtonText: 'ยกเลิก',
         reverseButtons: true,
         customClass: {
             popup: 'rounded-[2rem] p-8',
-            confirmButton: 'bg-indigo-600 text-white hover:bg-indigo-700 px-10 py-3 rounded-xl',
+            confirmButton: `${confirmButtonClass} px-10 py-3 rounded-xl`,
             cancelButton: 'bg-slate-100 text-slate-600 hover:bg-slate-200 px-10 py-3 rounded-xl'
         }
     });

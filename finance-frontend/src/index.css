@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/* ค่าเริ่มต้นแบบ Tailwind v3 (เดิมได้มาจาก CDN v3 ใน index.html) */
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-slate-200, currentColor);
+    }
+
+    button:not(:disabled),
+    [role="button"]:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
 @layer components {
 
     /* สไตล์ Label */
@@ -23,7 +39,7 @@
     /* เอฟเฟกต์ตอนกด (Focus) */
     .finance-input-group:focus,
     .finance-select:focus {
-        @apply bg-white border-indigo-500 ring-2 ring-indigo-500/10;
+        @apply bg-white border-brand-500 ring-2 ring-brand-500/10;
     }
 
     /* ตกแต่ง Dropdown ให้มีลูกศรเหมือนรูปตัวอย่าง */
@@ -56,6 +72,57 @@ textarea:focus::placeholder {
 }
 
 @theme {
+    /* ธีม Navy + Gold — ใช้ชื่อตามบทบาท (brand / gold / income / expense / warn) แทนชื่อสีตรงๆ */
+    --color-brand-50: #EEF2F8;
+    --color-brand-100: #DCE4F0;
+    --color-brand-200: #B9C8DF;
+    --color-brand-300: #8DA4C8;
+    --color-brand-400: #4A6A9C;
+    --color-brand-500: #1D4277;
+    --color-brand-600: #12305C;
+    --color-brand-700: #0D244A;
+    --color-brand-800: #0B1B33;
+    --color-brand-900: #081427;
+    --color-brand-950: #050D1A;
+
+    --color-gold-50: #FBF6E9;
+    --color-gold-100: #F6EBCC;
+    --color-gold-200: #EED79A;
+    --color-gold-300: #F2C766;
+    --color-gold-400: #E0B45A;
+    --color-gold-500: #C99A3B;
+    --color-gold-600: #A87C26;
+    --color-gold-700: #86611C;
+
+    --color-income-50: #E8F5EF;
+    --color-income-100: #CBE9DB;
+    --color-income-200: #9DD5BC;
+    --color-income-300: #63BA95;
+    --color-income-400: #2F9E73;
+    --color-income-500: #148A61;
+    --color-income-600: #0F7A55;
+    --color-income-700: #0C6345;
+    --color-income-800: #0A4E37;
+
+    --color-expense-50: #FBEDEA;
+    --color-expense-100: #F6D6CF;
+    --color-expense-200: #EDB0A4;
+    --color-expense-300: #E3836F;
+    --color-expense-400: #D65E47;
+    --color-expense-500: #C94A35;
+    --color-expense-600: #C2412D;
+    --color-expense-700: #9F3424;
+    --color-expense-800: #7E2A1E;
+
+    --color-warn-50: #FBF3E2;
+    --color-warn-100: #F5E3BC;
+    --color-warn-200: #EBCB8A;
+    --color-warn-300: #DFB15A;
+    --color-warn-400: #D19A35;
+    --color-warn-500: #B8801C;
+    --color-warn-600: #A06A12;
+    --color-warn-700: #82560E;
+
     --animate-fade-in: fadeIn 0.2s ease-out;
     --animate-zoom-in: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 
