@@ -300,13 +300,13 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4 mb-2">
-                <h1 className="text-2xl font-bold text-slate-800">ตารางผ่อนชำระ</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">ตารางผ่อนชำระ</h1>
                 <button
                     type="button"
                     onClick={openCreate}
-                    className="h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
+                    className="shrink-0 h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
                 >
-                    <Plus size={18} /> เพิ่มรายการผ่อน
+                    <Plus size={18} /> เพิ่ม<span className="hidden sm:inline">รายการผ่อน</span>
                 </button>
             </div>
 
@@ -328,10 +328,10 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                     {/* สรุปยอด (เฉพาะที่กำลังผ่อน) */}
                     {activeInstallments.length > 0 && (
                         <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                            <div className={`grid gap-6 items-center p-6 ${hasOverdue ? 'grid-cols-1 md:grid-cols-[minmax(0,1fr)_380px]' : 'grid-cols-1'}`}>
+                            <div className={`grid gap-4 sm:gap-6 items-center p-4 sm:p-6 ${hasOverdue ? 'grid-cols-1 md:grid-cols-[minmax(0,1fr)_380px]' : 'grid-cols-1'}`}>
                                 <div className="flex flex-col gap-0.5">
                                     <span className="text-sm font-semibold text-slate-600">ต้องจ่ายเดือนนี้ · {currentMonthLabel()}</span>
-                                    <span className="text-[44px] leading-[52px] font-bold tracking-tight text-slate-900 tabular-nums">{money(summary.thisMonthDue)}</span>
+                                    <span className="text-[36px] leading-[44px] sm:text-[44px] sm:leading-[52px] font-bold tracking-tight text-slate-900 tabular-nums [overflow-wrap:anywhere]">{money(summary.thisMonthDue)}</span>
                                     <span className="text-[13px] text-slate-500">
                                         {summary.thisMonthCount
                                             ? `ยังไม่จ่าย ${summary.thisMonthCount} งวด จาก ${summary.thisMonthItemCount} รายการ`
@@ -354,7 +354,7 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                                     </div>
                                 )}
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 py-4 border-t border-slate-100">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-t border-slate-100">
                                 {[
                                     { label: 'ต้องจ่ายเดือนหน้า', value: summary.nextMonthDue, color: 'text-slate-800' },
                                     { label: 'จ่ายไปแล้ว', value: summary.totalPaid, color: 'text-income-600' },
@@ -363,15 +363,15 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                                 ].map((st) => (
                                     <div key={st.label} className="flex flex-col gap-0.5">
                                         <span className="text-xs text-slate-600">{st.label}</span>
-                                        <span className={`text-xl font-bold tabular-nums ${st.color}`}>{money(st.value)}</span>
+                                        <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${st.color}`}>{money(st.value)}</span>
                                     </div>
                                 ))}
                             </div>
-                            <div className="flex items-center gap-3 px-6 pb-5">
+                            <div className="flex items-center gap-3 px-4 sm:px-6 pb-5">
                                 <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
                                     <div className="h-full rounded-full bg-income-500 transition-all duration-500" style={{ width: `${paidPercent}%` }} />
                                 </div>
-                                <span className="text-xs text-slate-600 whitespace-nowrap">จ่ายแล้ว {paidPercent.toFixed(1)}% ของยอดทั้งหมด</span>
+                                <span className="text-xs text-slate-600 whitespace-nowrap">จ่ายแล้ว {paidPercent.toFixed(1)}%<span className="hidden sm:inline"> ของยอดทั้งหมด</span></span>
                             </div>
                         </div>
                     )}
@@ -416,7 +416,7 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
 
                     {/* Pagination */}
                     {activeInstallments.length > PAGE_SIZE && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pt-1">
+                        <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 px-1 pt-1">
                             <span className="text-[13px] text-slate-500">
                                 แสดง {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, activeInstallments.length)} จาก {activeInstallments.length} รายการ
                             </span>
@@ -474,9 +474,10 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                             </button>
 
                             {showCompleted && (
-                                <div className="overflow-x-auto">
-                                    <div className="min-w-[720px]">
-                                        <div className="grid grid-cols-[minmax(0,1fr)_120px_110px_64px_110px_88px] gap-3 items-center h-9 pl-5 pr-3 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-500">
+                                // มือถือ: แถวแบบการ์ด (ชื่อ + สรุปตัวเลขบรรทัดเดียว) · sm ขึ้นไป: ตาราง 6 คอลัมน์
+                                <div className="sm:overflow-x-auto">
+                                    <div className="sm:min-w-[720px]">
+                                        <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_120px_110px_64px_110px_88px] gap-3 items-center h-9 pl-5 pr-3 bg-slate-50 border-t border-slate-100 text-xs font-semibold text-slate-500">
                                             <span>รายการ</span><span className="text-right">ยอดจัด</span><span className="text-right">ค่างวด</span><span className="text-right">งวด</span><span>วันเริ่ม</span><span />
                                         </div>
                                         {completedInstallments.map((item) => {
@@ -486,9 +487,9 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                                                 <div
                                                     key={item.installmentsId}
                                                     id={`installment-${item.installmentsId}`}
-                                                    className={`scroll-mt-6 grid grid-cols-[minmax(0,1fr)_120px_110px_64px_110px_88px] gap-3 items-center min-h-16 py-2 pl-5 pr-3 border-t border-slate-100 text-sm tabular-nums ${highlightId === item.installmentsId ? 'bg-gold-50' : ''}`}
+                                                    className={`scroll-mt-20 lg:scroll-mt-6 flex sm:grid sm:grid-cols-[minmax(0,1fr)_120px_110px_64px_110px_88px] gap-3 items-center min-h-16 py-2.5 sm:py-2 pl-4 sm:pl-5 pr-2 sm:pr-3 border-t border-slate-100 text-sm tabular-nums ${highlightId === item.installmentsId ? 'bg-gold-50' : ''}`}
                                                 >
-                                                    <div className="flex flex-col gap-1 min-w-0">
+                                                    <div className="flex-1 sm:flex-none flex flex-col gap-1 min-w-0">
                                                         <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="font-semibold text-slate-800">{item.installmentsName}</span>
                                                             <span className={`h-[22px] pl-1.5 pr-2 rounded-full text-xs font-semibold flex items-center gap-1 ${closed ? 'bg-slate-100 text-slate-700' : 'bg-income-50 text-income-700'}`}>
@@ -501,12 +502,15 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                                                                 ? `${item.closedAt ? `ปิดเมื่อ ${formatShortDate(new Date(item.closedAt))} · ` : ''}จ่ายแล้ว ${paid}/${item.installmentMonths} งวด`
                                                                 : `${item.description ? `${item.description} · ` : ''}จ่ายครบ ${item.installmentMonths} งวด`}
                                                         </span>
+                                                        <span className="sm:hidden text-xs text-slate-600">
+                                                            ยอดจัด {money(item.totalAmount)} · {money(item.monthlyAmount)} × {item.installmentMonths}
+                                                        </span>
                                                     </div>
-                                                    <span className="text-right text-slate-700">{money(item.totalAmount)}</span>
-                                                    <span className="text-right text-slate-700">{money(item.monthlyAmount)}</span>
-                                                    <span className="text-right text-slate-700">{item.installmentMonths}</span>
-                                                    <span className="text-slate-600">{formatShortDate(new Date(item.startDate))}</span>
-                                                    <div className="flex justify-end gap-0.5">
+                                                    <span className="hidden sm:block text-right text-slate-700">{money(item.totalAmount)}</span>
+                                                    <span className="hidden sm:block text-right text-slate-700">{money(item.monthlyAmount)}</span>
+                                                    <span className="hidden sm:block text-right text-slate-700">{item.installmentMonths}</span>
+                                                    <span className="hidden sm:block text-slate-600">{formatShortDate(new Date(item.startDate))}</span>
+                                                    <div className="shrink-0 flex justify-end gap-0.5">
                                                         {/* รายการที่ปิดยอดแล้วแก้ไขไม่ได้ (backend ปฏิเสธ) */}
                                                         {closed ? (
                                                             <span title="ปิดยอดแล้ว แก้ไขไม่ได้" className="w-10 h-10 flex items-center justify-center text-slate-300">

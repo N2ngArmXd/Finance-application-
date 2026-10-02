@@ -22,7 +22,7 @@ export default function ConfirmDialog({
     const Icon = icon;
     const NoteIcon = noteIcon;
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-6 bg-slate-900/50 animate-fade-in">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 sm:p-6 bg-slate-900/50 animate-fade-in">
             <div role="alertdialog" aria-modal="true" className="w-[360px] max-w-full bg-white rounded-3xl p-6 flex flex-col items-center gap-2 text-center shadow-[0_24px_48px_-12px_rgba(15,23,42,0.3)] animate-zoom-in">
                 <span className={`w-12 h-12 mb-1 rounded-full flex items-center justify-center ${danger ? 'bg-expense-50' : 'bg-brand-50'}`}>
                     <Icon size={22} className={danger ? 'text-expense-600' : 'text-brand-600'} />
