@@ -44,7 +44,8 @@ public class SavingsMovement {
     @Column(name = "note")
     private String note;
 
-    // ถอนไปใช้ (SPEND) -> รายจ่ายที่ระบบสร้าง ; null = ฝาก หรือถอนกลับเข้ากระเป๋า
+    // transaction ที่ระบบสร้างคู่กัน: ฝาก -> หมวด SAVING_IN, ถอนกลับเข้ากระเป๋า -> SAVING_OUT,
+    // ถอนไปใช้ -> รายจ่าย (EXPENSE) ตามหมวดที่เลือก ; null = ข้อมูลก่อนมีระบบนี้
     @Column(name = "transaction_id")
     private Long transactionId;
 

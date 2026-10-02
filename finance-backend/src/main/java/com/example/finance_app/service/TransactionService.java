@@ -115,10 +115,27 @@ public class TransactionService {
     // สร้างรายจ่ายอัตโนมัติตอน "ถอนเงินออมไปใช้" — ลงวันที่ถอน และลิงก์กลับไปที่รายการถอน
     public Transaction createSavingsSpend(Long userId, Long savingsMovementId, Long categoryId,
             BigDecimal amount, LocalDateTime date, String description) {
+        return createSavingsTransaction(userId, savingsMovementId, findExpenseCategory(categoryId),
+                amount, date, description);
+    }
+
+    // สร้างรายการย้ายเงินเข้า/ออกกระปุกอัตโนมัติ (หมวด SAVING_IN / SAVING_OUT — ไม่ใช่รายรับ/รายจ่าย)
+    // ให้หน้าประวัติแสดงการฝาก/ถอนเรียงรวมกับรายการอื่น
+    public Transaction createSavingsTransfer(Long userId, Long savingsMovementId, boolean deposit,
+            BigDecimal amount, LocalDateTime date, String description) {
+        String type = deposit ? DefaultCategoryInitializer.SAVING_IN : DefaultCategoryInitializer.SAVING_OUT;
+        String name = deposit ? DefaultCategoryInitializer.SAVING_IN_CATEGORY_NAME
+                : DefaultCategoryInitializer.SAVING_OUT_CATEGORY_NAME;
+        Categories category = categoriesRepository.findActiveByNameAndType(name, type)
+                .orElseThrow(() -> new RuntimeException("ไม่พบหมวด" + name));
+        return createSavingsTransaction(userId, savingsMovementId, category, amount, date, description);
+    }
+
+    private Transaction createSavingsTransaction(Long userId, Long savingsMovementId, Categories category,
+            BigDecimal amount, LocalDateTime date, String description) {
 
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("ไม่พบผู้ใช้ดังกล่าว"));
-        Categories category = findExpenseCategory(categoryId);
 
         Transaction transaction = new Transaction();
         transaction.setId(generateUniqueTransactionId(category.getType(), date));
@@ -132,12 +149,12 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
-    // แก้รายจ่ายที่ผูกกับรายการถอนไปใช้ ให้ตรงกับรายการถอนที่ถูกแก้
-    public void updateSavingsSpend(Long transactionId, Long categoryId, BigDecimal amount,
+    // แก้ transaction ที่ผูกกับรายการฝาก/ถอน ให้ตรงกับรายการที่ถูกแก้ (categoryId ใช้เฉพาะถอนไปใช้)
+    public void updateSavingsTransaction(Long transactionId, Long categoryId, BigDecimal amount,
             LocalDateTime date, String description) {
 
         Transaction transaction = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายจ่ายที่ผูกกับรายการถอน"));
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายการที่ผูกกับรายการฝาก/ถอน"));
         if (categoryId != null) {
             transaction.setCategoryId(findExpenseCategory(categoryId));
         }
@@ -147,8 +164,8 @@ public class TransactionService {
         transactionRepository.save(transaction);
     }
 
-    // ยกเลิกรายจ่ายของรายการถอนไปใช้ (soft delete)
-    public void cancelSavingsSpend(Long transactionId) {
+    // ยกเลิก transaction ของรายการฝาก/ถอน (soft delete)
+    public void cancelSavingsTransaction(Long transactionId) {
         transactionRepository.findById(transactionId).ifPresent(t -> {
             t.setDeleted(true);
             transactionRepository.save(t);
@@ -171,14 +188,17 @@ public class TransactionService {
     // รายจ่ายจากเงินออมต้องจัดการที่หน้าเงินออม ไม่งั้นยอดในกระปุกจะไม่ตรงกับรายจ่าย
     private void assertNotSavingsSpend(Transaction t) {
         if (t.getSavingsMovementId() != null) {
-            throw new RuntimeException("รายการนี้มาจากการถอนเงินออม แก้ไขหรือลบได้ที่หน้าเงินออม");
+            throw new RuntimeException("รายการนี้มาจากเงินออม แก้ไขหรือลบได้ที่หน้าเงินออม");
         }
     }
 
     // id = [ประเภท 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
-    // ประเภท: INCOME=1, EXPENSE=2
+    // ประเภท: INCOME=1, EXPENSE=2, SAVING_IN (ฝากเงินออม)=3, SAVING_OUT (ถอนเงินออม)=4
     private Long generateUniqueTransactionId(String categoryType, LocalDateTime date) {
-        long typeDigit = "INCOME".equalsIgnoreCase(categoryType) ? 1L : 2L;
+        long typeDigit = "INCOME".equalsIgnoreCase(categoryType) ? 1L
+                : DefaultCategoryInitializer.SAVING_IN.equalsIgnoreCase(categoryType) ? 3L
+                : DefaultCategoryInitializer.SAVING_OUT.equalsIgnoreCase(categoryType) ? 4L
+                : 2L;
         long ddmmyy = date.getDayOfMonth() * 10000L
                 + date.getMonthValue() * 100L
                 + (date.getYear() % 100);
@@ -308,8 +328,9 @@ public class TransactionService {
         String search = (req.getSearch() != null && !req.getSearch().isBlank())
                 ? req.getSearch().trim()
                 : null;
+        // ประเภท (LIKE): INCOME / EXPENSE / SAVING = ทั้งฝากและถอนเงินออม (SAVING_IN + SAVING_OUT)
         String type = (req.getType() != null && !req.getType().isBlank() && !"ALL".equalsIgnoreCase(req.getType()))
-                ? req.getType()
+                ? ("SAVING".equalsIgnoreCase(req.getType()) ? "SAVING\\_%" : req.getType().toUpperCase())
                 : null;
         Long categoryId = req.getCategoryId();
         LocalDateTime dateFrom = req.getDateFrom() != null ? req.getDateFrom().atStartOfDay() : null;
@@ -326,6 +347,8 @@ public class TransactionService {
         // ยอดสรุปแยกตามประเภท (คิดจากทั้งชุดที่ตรงเงื่อนไข ไม่ใช่แค่หน้านี้)
         BigDecimal totalIncome = BigDecimal.ZERO;
         BigDecimal totalExpense = BigDecimal.ZERO;
+        BigDecimal totalSavingIn = BigDecimal.ZERO;
+        BigDecimal totalSavingOut = BigDecimal.ZERO;
         for (Object[] row : transactionRepository.sumByType(
                 req.getUserId(), search, type, categoryId, dateFrom, dateTo)) {
             String catType = (String) row[0];
@@ -334,10 +357,14 @@ public class TransactionService {
                 totalIncome = totalIncome.add(sum);
             } else if ("EXPENSE".equalsIgnoreCase(catType)) {
                 totalExpense = totalExpense.add(sum);
+            } else if (DefaultCategoryInitializer.SAVING_IN.equalsIgnoreCase(catType)) {
+                totalSavingIn = totalSavingIn.add(sum);
+            } else if (DefaultCategoryInitializer.SAVING_OUT.equalsIgnoreCase(catType)) {
+                totalSavingOut = totalSavingOut.add(sum);
             }
         }
 
-        return new TransactionPageResponse(
+        TransactionPageResponse response = new TransactionPageResponse(
                 content,
                 result.getNumber() + 1, // กลับเป็น 1-based ให้ frontend
                 result.getSize(),
@@ -345,6 +372,9 @@ public class TransactionService {
                 result.getTotalPages(),
                 totalIncome,
                 totalExpense);
+        response.setTotalSavingIn(totalSavingIn);
+        response.setTotalSavingOut(totalSavingOut);
+        return response;
     }
 
     // ลบหลายรายการพร้อมกัน (soft delete)
@@ -357,7 +387,7 @@ public class TransactionService {
             throw new RuntimeException("ไม่พบรายการที่จะลบ");
         }
         if (transactionRepository.countSavingsSpend(ids) > 0) {
-            throw new RuntimeException("มีรายการที่มาจากการถอนเงินออม ลบได้ที่หน้าเงินออมเท่านั้น");
+            throw new RuntimeException("มีรายการที่มาจากเงินออม ลบได้ที่หน้าเงินออมเท่านั้น");
         }
         return transactionRepository.softDeleteByIds(ids, userId);
     }

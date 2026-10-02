@@ -86,7 +86,7 @@ public class SavingsService {
 
         BigDecimal balance = BigDecimal.ZERO;
         if (req.getInitialDeposit() != null && req.getInitialDeposit().compareTo(BigDecimal.ZERO) > 0) {
-            saveMovement(goal, SavingsMovement.DEPOSIT, req.getInitialDeposit(), LocalDateTime.now(), "ฝากครั้งแรก");
+            saveTransfer(goal, SavingsMovement.DEPOSIT, req.getInitialDeposit(), LocalDateTime.now(), "ฝากครั้งแรก");
             balance = req.getInitialDeposit();
         }
         return toGoalResponse(goal, balance, balance);
@@ -114,7 +114,7 @@ public class SavingsService {
                 throw new IllegalArgumentException("ยังมีเงินในกระปุก " + balance.toPlainString()
                         + " บาท ต้องถอนออกให้หมดก่อนปิดกระปุก");
             }
-            saveMovement(goal, SavingsMovement.WITHDRAW, balance, LocalDateTime.now(), "ถอนทั้งหมดก่อนปิดกระปุก");
+            saveTransfer(goal, SavingsMovement.WITHDRAW, balance, LocalDateTime.now(), "ถอนทั้งหมดก่อนปิดกระปุก");
         }
         goal.setStatus(STATUS_ARCHIVED);
         goal.setArchivedAt(LocalDateTime.now());
@@ -154,7 +154,7 @@ public class SavingsService {
     public SavingsMovementResponse deposit(SavingsMovementRequest req) {
         SavingsGoal goal = loadOpenGoal(req.getSavingsGoalId(), req.getUserId());
         requirePositive(req.getAmount());
-        SavingsMovement m = saveMovement(goal, SavingsMovement.DEPOSIT, req.getAmount(),
+        SavingsMovement m = saveTransfer(goal, SavingsMovement.DEPOSIT, req.getAmount(),
                 dateOrNow(req.getMovementDate()), req.getNote());
         return toMovementResponse(m, null);
     }
@@ -174,17 +174,17 @@ public class SavingsService {
         }
 
         LocalDateTime date = dateOrNow(req.getMovementDate());
-        SavingsMovement m = saveMovement(goal, SavingsMovement.WITHDRAW, req.getAmount(), date, req.getNote());
-
-        Transaction txn = null;
-        if (MODE_SPEND.equals(mode)) {
-            // บันทึกรายการถอนก่อนเพื่อให้ได้ id ไปผูกกับรายจ่าย
-            txn = transactionService.createSavingsSpend(goal.getUserId(), m.getSavingsMovementId(),
-                    req.getCategoryId(), req.getAmount(), date, spendDescription(goal, req.getNote()));
-            m.setTransactionId(txn.getId());
-            m = movementRepository.save(m);
+        if (MODE_TO_WALLET.equals(mode)) {
+            SavingsMovement m = saveTransfer(goal, SavingsMovement.WITHDRAW, req.getAmount(), date, req.getNote());
+            return toMovementResponse(m, null);
         }
-        return toMovementResponse(m, txn);
+
+        // ถอนไปใช้: บันทึกรายการถอนก่อนเพื่อให้ได้ id ไปผูกกับรายจ่าย
+        SavingsMovement m = saveMovement(goal, SavingsMovement.WITHDRAW, req.getAmount(), date, req.getNote());
+        Transaction txn = transactionService.createSavingsSpend(goal.getUserId(), m.getSavingsMovementId(),
+                req.getCategoryId(), req.getAmount(), date, describe(goal, m, true));
+        m.setTransactionId(txn.getId());
+        return toMovementResponse(movementRepository.save(m), txn);
     }
 
     // แก้ยอด/วันที่/หมายเหตุ (+ หมวดหมู่ถ้าเป็นถอนไปใช้) — เปลี่ยนประเภทไม่ได้ ให้ลบแล้วทำใหม่
@@ -208,16 +208,19 @@ public class SavingsService {
         m.setNote(req.getNote());
         m = movementRepository.save(m);
 
-        Transaction txn = null;
-        if (m.getTransactionId() != null) {
-            transactionService.updateSavingsSpend(m.getTransactionId(), req.getCategoryId(), m.getAmount(),
-                    m.getMovementDate(), spendDescription(goal, m.getNote()));
-            txn = transactionRepository.findById(m.getTransactionId()).orElse(null);
+        Transaction txn = m.getTransactionId() != null
+                ? transactionRepository.findById(m.getTransactionId()).orElse(null)
+                : null;
+        if (txn != null) {
+            boolean spend = isSpend(m, txn);
+            transactionService.updateSavingsTransaction(txn.getId(), spend ? req.getCategoryId() : null,
+                    m.getAmount(), m.getMovementDate(), describe(goal, m, spend));
+            txn = transactionRepository.findById(txn.getId()).orElse(null);
         }
         return toMovementResponse(m, txn);
     }
 
-    // ลบรายการฝาก/ถอน (soft delete) — ถอนไปใช้จะลบรายจ่ายที่ผูกอยู่ด้วย
+    // ลบรายการฝาก/ถอน (soft delete) — ลบ transaction ที่ผูกอยู่ (ฝาก/ถอน/รายจ่าย) ด้วย
     @Transactional
     public void deleteMovement(SavingsMovementRequest req) {
         SavingsMovement m = loadMovement(req.getSavingsMovementId(), req.getUserId());
@@ -231,7 +234,7 @@ public class SavingsService {
         m.setDeleted(true);
         movementRepository.save(m);
         if (m.getTransactionId() != null) {
-            transactionService.cancelSavingsSpend(m.getTransactionId());
+            transactionService.cancelSavingsTransaction(m.getTransactionId());
         }
     }
 
@@ -261,6 +264,22 @@ public class SavingsService {
     }
 
     // ---------- helpers ----------
+
+    // ฝาก / ถอนกลับเข้ากระเป๋า: บันทึกรายการ + transaction หมวดฝาก/ถอนเงินออม ให้ขึ้นในหน้าประวัติ
+    private SavingsMovement saveTransfer(SavingsGoal goal, String type, BigDecimal amount,
+            LocalDateTime date, String note) {
+        SavingsMovement m = saveMovement(goal, type, amount, date, note);
+        Transaction txn = transactionService.createSavingsTransfer(goal.getUserId(), m.getSavingsMovementId(),
+                SavingsMovement.DEPOSIT.equals(type), amount, date, describe(goal, m, false));
+        m.setTransactionId(txn.getId());
+        return movementRepository.save(m);
+    }
+
+    // ถอนไปใช้ = ถอนที่ผูกกับรายจ่าย (ถอนกลับเข้ากระเป๋าผูกกับหมวด SAVING_OUT)
+    private boolean isSpend(SavingsMovement m, Transaction txn) {
+        return SavingsMovement.WITHDRAW.equals(m.getType()) && txn != null && txn.getCategoryId() != null
+                && "EXPENSE".equalsIgnoreCase(txn.getCategoryId().getType());
+    }
 
     private SavingsMovement saveMovement(SavingsGoal goal, String type, BigDecimal amount,
             LocalDateTime date, String note) {
@@ -344,8 +363,11 @@ public class SavingsService {
         return date != null ? date : LocalDateTime.now();
     }
 
-    private String spendDescription(SavingsGoal goal, String note) {
-        String base = "ถอนเงินออม: " + goal.getName();
+    // รายละเอียดของ transaction ที่ระบบสร้าง เช่น "ฝากเงินออม: เที่ยวญี่ปุ่น — เงินเดือน ต.ค."
+    private String describe(SavingsGoal goal, SavingsMovement m, boolean spend) {
+        String base = (SavingsMovement.DEPOSIT.equals(m.getType()) ? "ฝากเงินออม: "
+                : spend ? "ใช้เงินออม: " : "ถอนเงินออม: ") + goal.getName();
+        String note = m.getNote();
         return (note != null && !note.isBlank()) ? base + " — " + note.trim() : base;
     }
 
@@ -396,13 +418,14 @@ public class SavingsService {
         r.setSavingsMovementId(m.getSavingsMovementId());
         r.setSavingsGoalId(m.getSavingsGoalId());
         r.setType(m.getType());
+        boolean spend = isSpend(m, txn);
         r.setMode(SavingsMovement.DEPOSIT.equals(m.getType()) ? SavingsMovement.DEPOSIT
-                : m.getTransactionId() != null ? MODE_SPEND : MODE_TO_WALLET);
+                : spend ? MODE_SPEND : MODE_TO_WALLET);
         r.setAmount(m.getAmount());
         r.setMovementDate(m.getMovementDate());
         r.setNote(m.getNote());
         r.setTransactionId(m.getTransactionId());
-        if (txn != null && txn.getCategoryId() != null) {
+        if (spend) {
             Categories c = txn.getCategoryId();
             r.setCategoryId(c.getId());
             r.setCategoryName(c.getName());

@@ -46,7 +46,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // เงื่อนไขค้นหา/กรองแบบ optional (พารามิเตอร์ null = ไม่กรองข้อนั้น) ใช้ร่วมกันทั้งหน้าและยอดสรุป
     String FILTER = "WHERE t.userId.id = :userId AND t.isDeleted = false "
-            + "AND (:type IS NULL OR c.type = :type) "
+            // type เป็น pattern ของ LIKE (SAVING = 'SAVING\_%' ครอบทั้งฝาก/ถอนเงินออม)
+            + "AND (CAST(:type AS string) IS NULL OR c.type LIKE CAST(:type AS string) ESCAPE '\\') "
             + "AND (:categoryId IS NULL OR c.id = :categoryId) "
             // ใช้ COALESCE กับคอลัมน์ timestamp เพื่อให้ Postgres อนุมานชนิด param ได้ (เลี่ยง :date IS NULL บน param เปล่า)
             + "AND t.transactionDate >= COALESCE(:dateFrom, t.transactionDate) "

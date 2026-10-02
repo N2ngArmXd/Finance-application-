@@ -25,6 +25,13 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
     // หมวดที่ใช้กับรายจ่ายที่สร้างอัตโนมัติตอนกดจ่ายงวดผ่อน — ดู InstallmentService.updatePaidPeriod
     public static final String INSTALLMENT_CATEGORY_NAME = "ค่างวด-ผ่อนชำระ";
 
+    // ประเภทหมวดของการย้ายเงินเข้า/ออกกระปุก — ไม่ใช่รายรับ/รายจ่าย (dashboard/ยอดรายรับรายจ่ายไม่นับ)
+    // ดู SavingsService และ TransactionService.createSavingsTransfer
+    public static final String SAVING_IN = "SAVING_IN";
+    public static final String SAVING_OUT = "SAVING_OUT";
+    public static final String SAVING_IN_CATEGORY_NAME = "ฝากเงินออม";
+    public static final String SAVING_OUT_CATEGORY_NAME = "ถอนเงินออม";
+
     // {name, type, icon} — icon เก็บเป็น "ชื่อไอคอน lucide" (map เป็น component ฝั่งหน้าเว็บ)
     private static final String[][] DEFAULTS = {
             { "อาหาร", "EXPENSE", "Utensils" },
@@ -42,6 +49,8 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "ลงทุน", "INCOME", "TrendingUp" },
             { "ของขวัญ", "INCOME", "Gift" },
             { "อื่นๆ", "INCOME", "Circle" },
+            { SAVING_IN_CATEGORY_NAME, SAVING_IN, "PiggyBank" },
+            { SAVING_OUT_CATEGORY_NAME, SAVING_OUT, "ArrowUpFromLine" },
     };
 
     private static String key(String name, String type) {
