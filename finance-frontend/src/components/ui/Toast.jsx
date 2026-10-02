@@ -6,7 +6,7 @@ export function Toast({ toast }) {
     const isError = toast.kind === 'error';
     const Icon = isError ? AlertCircle : CheckCircle2;
     return (
-        <div className="fixed left-1/2 bottom-7 z-[60] w-[400px] max-w-[calc(100vw-32px)] -translate-x-1/2">
+        <div className="fixed left-1/2 bottom-float z-[60] w-[400px] max-w-[calc(100vw-32px)] -translate-x-1/2">
             <div
                 role="status"
                 className="flex items-center gap-3 min-h-12 py-1.5 pr-1.5 pl-4 rounded-xl bg-slate-900 text-white text-sm font-medium tabular-nums shadow-[0_12px_32px_-8px_rgba(15,23,42,0.45)] animate-toast-in"

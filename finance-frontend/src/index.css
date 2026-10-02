@@ -26,7 +26,8 @@
     /* กรอบคลุมทุกอย่างให้โค้งมนแบบรูปที่ 1 */
     .finance-input-group,
     .finance-select {
-        @apply w-full bg-slate-50 border border-slate-200 transition-all text-sm shadow-sm;
+        /* มือถือใช้ 16px (text-base) กัน iOS ซูมตอนแตะช่องกรอก */
+        @apply w-full bg-slate-50 border border-slate-200 transition-all text-base sm:text-sm shadow-sm;
         /* ใช้ CSS ปกติเพื่อเลี่ยง Error ของ Tailwind @apply */
         border-radius: 9999px !important;
         /* บังคับให้โค้งมนที่สุด (Pill Shape) */
@@ -50,6 +51,38 @@
         background-repeat: no-repeat;
         background-position: right 1.25rem center;
         background-size: 1.1em;
+    }
+}
+
+/* ความสูงแถบเมนูล่าง (BottomNav h-16) ที่ใช้บนจอเล็กกว่า lg */
+:root {
+    --bottom-nav-h: 4rem;
+}
+
+/* เว้นที่ด้านล่างเนื้อหาไม่ให้ BottomNav บัง (จอ lg ขึ้นไปไม่มี BottomNav) */
+@utility pb-bottom-nav {
+    padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 1.5rem);
+
+    @media (width >=64rem) {
+        padding-bottom: 2rem;
+    }
+}
+
+/* ตำแหน่งของที่ลอยล่างจอ (Toast, แถบเลือกหลายรายการ) ให้อยู่เหนือ BottomNav */
+@utility bottom-float {
+    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 0.75rem);
+
+    @media (width >=64rem) {
+        bottom: 1.75rem;
+    }
+}
+
+/* ของที่ sticky ติดขอบล่าง (เช่นปุ่มบันทึก) ให้หยุดชิดขอบบนของ BottomNav */
+@utility bottom-above-nav {
+    bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+
+    @media (width >=64rem) {
+        bottom: 0;
     }
 }
 

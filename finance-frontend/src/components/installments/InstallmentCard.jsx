@@ -37,6 +37,7 @@ const NEXT_TONE = {
     done: { circle: 'bg-income-50 text-income-600', text: 'text-income-600' },
 };
 
+// ตารางงวดแบบ 5 คอลัมน์ ใช้ตั้งแต่ sm ขึ้นไป (มือถือแสดงเป็นแถว 2 บรรทัดแทน)
 const GRID = 'grid grid-cols-[64px_minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_176px] items-center pl-4 pr-3';
 
 export default function InstallmentCard({ item, progress, expanded, highlight, payingPeriod, onToggle, onPay, onEdit, onClose, onDelete }) {
@@ -87,20 +88,21 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
     return (
         <div
             id={`installment-${item.installmentsId}`}
-            className={`scroll-mt-6 relative bg-white border rounded-2xl transition-shadow ${highlight
+            className={`scroll-mt-20 lg:scroll-mt-6 relative bg-white border rounded-2xl transition-shadow ${highlight
                 ? 'border-gold-400 shadow-[0_0_0_3px_var(--color-gold-100)]'
                 : `border-slate-200 ${expanded ? 'shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)]' : 'shadow-[0_1px_2px_rgba(15,23,42,0.04)]'}`
                 }`}
         >
             {highlight && (
-                <div className="flex items-center gap-1.5 px-5 py-2 bg-gold-50 border-b border-gold-100 rounded-t-[15px] text-xs font-semibold text-gold-700">
+                <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2 bg-gold-50 border-b border-gold-100 rounded-t-[15px] text-xs font-semibold text-gold-700">
                     <LayoutDashboard size={14} /> เปิดจากหน้าหลัก
                 </div>
             )}
 
             <div onClick={onToggle} className="cursor-pointer">
                 {/* หัวการ์ด */}
-                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-4 items-center pt-[18px] pb-3.5 pl-5 pr-3">
+                {/* มือถือ: ยอดต่อเดือนย้ายมาอยู่ใต้ชื่อ ให้ชื่อมีที่พอ */}
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-2 sm:gap-4 items-start sm:items-center pt-3.5 sm:pt-[18px] pb-3.5 pl-4 sm:pl-5 pr-2 sm:pr-3">
                     <div className="min-w-0 flex flex-col gap-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-base font-semibold text-slate-800">{item.installmentsName}</span>
@@ -117,12 +119,16 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
                             <span>ดอกเบี้ย {rateText}</span>
                             <span className="h-[22px] px-2 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center">{methodLabel}</span>
                         </div>
+                        <div className="sm:hidden mt-0.5 flex items-baseline gap-1">
+                            <span className="text-lg font-bold text-brand-600 tabular-nums">{money(item.monthlyAmount)}</span>
+                            <span className="text-xs text-slate-500">ต่อเดือน</span>
+                        </div>
                     </div>
-                    <div className="flex flex-col items-end">
+                    <div className="hidden sm:flex flex-col items-end">
                         <span className="text-xl font-bold text-brand-600 tabular-nums whitespace-nowrap">{money(item.monthlyAmount)}</span>
                         <span className="text-xs text-slate-500">ต่อเดือน</span>
                     </div>
-                    <div className="flex gap-0.5" ref={menuRef}>
+                    <div className="relative flex gap-0.5" ref={menuRef}>
                         <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
@@ -139,7 +145,7 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
                         {menuOpen && (
                             <div
                                 onClick={(e) => e.stopPropagation()}
-                                className={`absolute right-[52px] ${highlight ? 'top-24' : 'top-16'} z-10 w-[200px] p-1.5 bg-white border border-slate-200 rounded-xl shadow-[0_12px_32px_-8px_rgba(15,23,42,0.22)] flex flex-col animate-fade-in`}
+                                className={`absolute right-10 top-11 z-10 w-[200px] p-1.5 bg-white border border-slate-200 rounded-xl shadow-[0_12px_32px_-8px_rgba(15,23,42,0.22)] flex flex-col animate-fade-in`}
                             >
                                 <button type="button" onClick={menuAction(onEdit)} className="h-10 px-2.5 rounded-lg flex items-center gap-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
                                     <Pencil size={18} /> แก้ไข
@@ -156,7 +162,7 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
                 </div>
 
                 {/* งวดถัดไป + ความคืบหน้า */}
-                <div className="grid grid-cols-[minmax(0,1fr)_260px] gap-6 items-center pt-3 pb-4 px-5 border-t border-slate-100">
+                <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_260px] gap-3 sm:gap-6 items-center pt-3 pb-4 px-4 sm:px-5 border-t border-slate-100">
                     <div className="flex items-center gap-2.5 min-w-0">
                         <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${tone.circle}`}>
                             <info.Icon size={16} />
@@ -180,8 +186,8 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
 
             {/* ส่วนกางออก: ตารางงวด */}
             {expanded && (
-                <div className="border-t border-slate-100 px-5 pt-4 pb-5 flex flex-col gap-3.5">
-                    <div className="flex items-baseline gap-6 flex-wrap text-[13px] text-slate-500">
+                <div className="border-t border-slate-100 px-3 sm:px-5 pt-4 pb-4 sm:pb-5 flex flex-col gap-3.5">
+                    <div className="flex items-baseline gap-x-4 sm:gap-x-6 gap-y-1 flex-wrap px-1 sm:px-0 text-[13px] text-slate-500">
                         <span>ถึงกำหนด <b className="text-[15px] font-semibold text-slate-800">{progress.due}</b> งวด</span>
                         <span>จ่ายแล้ว <b className="text-[15px] font-semibold text-income-600">{progress.paidCount}</b> งวด</span>
                         <span>เหลือ <b className="text-[15px] font-semibold text-slate-800">{progress.remaining}</b> งวด</span>
@@ -189,7 +195,7 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
                     </div>
 
                     <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <div className={`${GRID} h-9 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500`}>
+                        <div className={`hidden sm:grid ${GRID} h-9 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500`}>
                             <span>งวด</span><span>วันครบกำหนด</span><span className="text-right">ค่างวด</span><span className="text-right">เงินต้นคงเหลือ</span><span className="text-right">สถานะ</span>
                         </div>
 
@@ -210,59 +216,84 @@ export default function InstallmentCard({ item, progress, expanded, highlight, p
                         {rows.map((row) => {
                             const loading = payingPeriod === row.month;
                             const isNext = !row.paid && row.month === nextMonth && !row.overdue;
+                            const badges = (
+                                <>
+                                    {row.overdue && (
+                                        <span className="h-5 px-[7px] rounded-full bg-white ring-1 ring-inset ring-expense-200 text-expense-700 text-xs font-semibold flex items-center">ค้าง</span>
+                                    )}
+                                    {isNext && (
+                                        <span className="h-5 px-[7px] rounded-full bg-gold-100 text-gold-700 text-xs font-semibold flex items-center">งวดถัดไป</span>
+                                    )}
+                                </>
+                            );
+                            const dateTone = row.overdue ? 'text-expense-700' : row.paid ? 'text-slate-500' : 'text-slate-700';
+                            const paymentTone = row.paid ? 'text-slate-500' : 'text-brand-600';
+                            const status = row.paid ? (
+                                loading ? (
+                                    <span className="h-8 pl-2.5 pr-3 rounded-full bg-income-50 text-income-700 text-[13px] font-semibold flex items-center gap-1.5">
+                                        <Loader2 size={14} className="animate-spin" /> กำลังยกเลิก…
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => onPay(row)}
+                                        disabled={payingPeriod != null}
+                                        title="กดเพื่อยกเลิกการจ่ายงวดนี้"
+                                        className="h-8 pl-[9px] pr-3 rounded-full bg-income-50 hover:bg-income-100 text-income-700 text-[13px] font-semibold flex items-center gap-[5px] disabled:cursor-not-allowed"
+                                    >
+                                        <Check size={16} /> จ่ายแล้ว
+                                    </button>
+                                )
+                            ) : row.isDue ? (
+                                loading ? (
+                                    <span className="h-9 px-3.5 rounded-xl bg-brand-500 text-white text-sm font-semibold flex items-center gap-2 opacity-90">
+                                        <Loader2 size={16} className="animate-spin" /> กำลังบันทึก…
+                                    </span>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => onPay(row)}
+                                        disabled={payingPeriod != null}
+                                        className="h-9 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        <Wallet size={16} /> จ่ายงวดนี้
+                                    </button>
+                                )
+                            ) : (
+                                <span className="h-8 px-3 rounded-full bg-slate-100 text-slate-500 text-[13px] font-medium flex items-center">ยังไม่ถึงกำหนด</span>
+                            );
                             return (
                                 <div
                                     key={row.month}
-                                    className={`${GRID} min-h-[52px] border-t border-slate-100 text-sm tabular-nums ${row.overdue ? 'bg-expense-50' : isNext ? 'bg-gold-50' : 'bg-white'}`}
+                                    className={`border-t border-slate-100 text-sm tabular-nums ${row.overdue ? 'bg-expense-50' : isNext ? 'bg-gold-50' : 'bg-white'}`}
                                 >
-                                    <span className={`font-semibold ${row.paid ? 'text-slate-500' : 'text-slate-800'}`}>{row.month}</span>
-                                    <span className={`flex items-center gap-2 ${row.overdue ? 'text-expense-700' : row.paid ? 'text-slate-500' : 'text-slate-700'}`}>
-                                        {formatShortDate(row.date)}
-                                        {row.overdue && (
-                                            <span className="h-5 px-[7px] rounded-full bg-white ring-1 ring-inset ring-expense-200 text-expense-700 text-xs font-semibold flex items-center">ค้าง</span>
-                                        )}
-                                        {isNext && (
-                                            <span className="h-5 px-[7px] rounded-full bg-gold-100 text-gold-700 text-xs font-semibold flex items-center">งวดถัดไป</span>
-                                        )}
-                                    </span>
-                                    <span className={`text-right font-semibold ${row.paid ? 'text-slate-500' : 'text-brand-600'}`}>{money(row.payment)}</span>
-                                    <span className="text-right text-slate-500">{money(row.remaining)}</span>
-                                    <span className="flex justify-end">
-                                        {row.paid ? (
-                                            loading ? (
-                                                <span className="h-8 pl-2.5 pr-3 rounded-full bg-income-50 text-income-700 text-[13px] font-semibold flex items-center gap-1.5">
-                                                    <Loader2 size={14} className="animate-spin" /> กำลังยกเลิก…
-                                                </span>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onPay(row)}
-                                                    disabled={payingPeriod != null}
-                                                    title="กดเพื่อยกเลิกการจ่ายงวดนี้"
-                                                    className="h-8 pl-[9px] pr-3 rounded-full bg-income-50 hover:bg-income-100 text-income-700 text-[13px] font-semibold flex items-center gap-[5px] disabled:cursor-not-allowed"
-                                                >
-                                                    <Check size={16} /> จ่ายแล้ว
-                                                </button>
-                                            )
-                                        ) : row.isDue ? (
-                                            loading ? (
-                                                <span className="h-9 px-3.5 rounded-xl bg-brand-500 text-white text-sm font-semibold flex items-center gap-2 opacity-90">
-                                                    <Loader2 size={16} className="animate-spin" /> กำลังบันทึก…
-                                                </span>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => onPay(row)}
-                                                    disabled={payingPeriod != null}
-                                                    className="h-9 px-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
-                                                >
-                                                    <Wallet size={16} /> จ่ายงวดนี้
-                                                </button>
-                                            )
-                                        ) : (
-                                            <span className="h-8 px-3 rounded-full bg-slate-100 text-slate-500 text-[13px] font-medium flex items-center">ยังไม่ถึงกำหนด</span>
-                                        )}
-                                    </span>
+                                    {/* มือถือ: งวด · วันที่ / ค่างวด · คงเหลือ  + สถานะด้านขวา */}
+                                    <div className="sm:hidden min-h-[60px] flex items-center gap-3 py-2 pl-3 pr-2">
+                                        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                            <span className={`flex items-center gap-1.5 flex-wrap ${dateTone}`}>
+                                                <span className={`font-semibold ${row.paid ? 'text-slate-500' : 'text-slate-800'}`}>งวด {row.month}</span>
+                                                <span className="text-slate-300">·</span>
+                                                {formatShortDate(row.date)}
+                                                {badges}
+                                            </span>
+                                            <span className="text-xs text-slate-500">
+                                                <span className={`text-sm font-semibold ${paymentTone}`}>{money(row.payment)}</span>
+                                                {' '}· คงเหลือ {money(row.remaining)}
+                                            </span>
+                                        </div>
+                                        <span className="shrink-0">{status}</span>
+                                    </div>
+
+                                    <div className={`hidden sm:grid ${GRID} min-h-[52px]`}>
+                                        <span className={`font-semibold ${row.paid ? 'text-slate-500' : 'text-slate-800'}`}>{row.month}</span>
+                                        <span className={`flex items-center gap-2 ${dateTone}`}>
+                                            {formatShortDate(row.date)}
+                                            {badges}
+                                        </span>
+                                        <span className={`text-right font-semibold ${paymentTone}`}>{money(row.payment)}</span>
+                                        <span className="text-right text-slate-500">{money(row.remaining)}</span>
+                                        <span className="flex justify-end">{status}</span>
+                                    </div>
                                 </div>
                             );
                         })}

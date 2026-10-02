@@ -31,17 +31,17 @@ export default function SavingsGoalCard({ goal, highlight, onOpen, onDeposit, on
         <div
             id={`goal-${goal.savingsGoalId}`}
             onClick={onOpen}
-            className={`scroll-mt-6 relative bg-white border rounded-2xl flex flex-col cursor-pointer transition-shadow hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)] ${highlight
+            className={`scroll-mt-20 lg:scroll-mt-6 relative bg-white border rounded-2xl flex flex-col cursor-pointer transition-shadow hover:shadow-[0_4px_16px_-6px_rgba(15,23,42,0.12)] ${highlight
                 ? 'border-gold-400 shadow-[0_0_0_3px_var(--color-gold-100)]'
                 : 'border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'}`}
         >
             {highlight && (
-                <div className="flex items-center gap-1.5 px-5 py-2 bg-gold-50 border-b border-gold-100 rounded-t-[15px] text-xs font-semibold text-gold-700">
+                <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2 bg-gold-50 border-b border-gold-100 rounded-t-[15px] text-xs font-semibold text-gold-700">
                     <LayoutDashboard size={14} /> เปิดจากหน้าอื่น
                 </div>
             )}
 
-            <div className="p-5 flex flex-col gap-3.5 flex-1">
+            <div className="p-4 sm:p-5 flex flex-col gap-3.5 flex-1">
                 <div className="flex items-start gap-3">
                     <GoalAvatar icon={goal.icon} color={goal.color} size={44} />
                     <div className="flex-1 min-w-0 flex flex-col">
@@ -102,11 +102,11 @@ export default function SavingsGoalCard({ goal, highlight, onOpen, onDeposit, on
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 px-5 pb-5">
+            <div className="grid grid-cols-2 gap-2 px-4 sm:px-5 pb-4 sm:pb-5">
                 <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onDeposit(); }}
-                    className="h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
+                    className="h-11 sm:h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
                 >
                     <ArrowDownToLine size={16} /> ฝาก
                 </button>
@@ -114,7 +114,7 @@ export default function SavingsGoalCard({ goal, highlight, onOpen, onDeposit, on
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onWithdraw(); }}
                     disabled={!(goal.balance > 0)}
-                    className="h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:text-slate-400 disabled:hover:bg-white disabled:cursor-not-allowed"
+                    className="h-11 sm:h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center gap-1.5 disabled:text-slate-400 disabled:hover:bg-white disabled:cursor-not-allowed"
                 >
                     <ArrowUpFromLine size={16} /> ถอน
                 </button>

@@ -11,6 +11,9 @@ import { useToast } from './ui/useToast';
 const escapeHtml = (s) =>
     String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// โฟกัสช่องยอดเงินอัตโนมัติเฉพาะเครื่องที่ใช้เมาส์ (จอสัมผัสคีย์บอร์ดจะเด้งบังหน้าทันที)
+const canAutoFocus = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
+
 export default function TransactionPage({ userId, onNavigate }) {
     const [categories, setCategories] = useState([]);
     const [selectedType, setSelectedType] = useState('EXPENSE'); // เลือกประเภทก่อน default = รายจ่าย
@@ -173,19 +176,19 @@ export default function TransactionPage({ userId, onNavigate }) {
     const goHistory = () => onNavigate && onNavigate('history');
 
     return (
-        <div className="max-w-[928px] mx-auto flex flex-col gap-6">
+        <div className="max-w-[928px] mx-auto flex flex-col gap-4 sm:gap-6">
             <div className="flex items-center justify-between gap-4">
-                <h1 className="text-2xl font-bold text-slate-800">บันทึกรายการ</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">บันทึกรายการ</h1>
                 <button onClick={goHistory} className="h-10 px-1 flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700">
                     ประวัติธุรกรรม <ArrowRight size={16} />
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 sm:gap-6 items-start">
                 {/* ฟอร์ม */}
                 <form
                     onSubmit={handleSubmit}
-                    className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                    className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 flex flex-col gap-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                 >
                     <TxnForm
                         type={selectedType}
@@ -203,9 +206,10 @@ export default function TransactionPage({ userId, onNavigate }) {
                         description={description}
                         onDescriptionChange={setDescription}
                         errors={errors}
-                        autoFocusAmount
+                        autoFocusAmount={canAutoFocus}
                     />
-                    <div className="flex flex-col gap-2">
+                    {/* จอเล็กกว่า lg: ปุ่มบันทึกติดอยู่เหนือ BottomNav ไม่ต้องเลื่อนผ่านหมวดหมู่ลงมากด */}
+                    <div className="sticky bottom-above-nav z-10 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-3 rounded-b-2xl bg-white/95 backdrop-blur border-t border-slate-100 lg:static lg:m-0 lg:p-0 lg:bg-transparent lg:backdrop-blur-none lg:border-0 flex flex-col gap-2">
                         <button
                             type="submit"
                             disabled={loading || fetching}
@@ -214,14 +218,14 @@ export default function TransactionPage({ userId, onNavigate }) {
                             {loading && <Loader2 size={20} className="animate-spin" />}
                             {saveLabel}
                         </button>
-                        <span className="text-xs text-slate-500 text-center">
+                        <span className="pointer-coarse:hidden text-xs text-slate-500 text-center">
                             กด <span className="font-mono px-1.5 py-px border border-slate-200 rounded-md bg-slate-50">Enter</span> เพื่อบันทึก · ประเภทและวันที่จะคงไว้สำหรับรายการถัดไป
                         </span>
                     </div>
                 </form>
 
                 {/* รายการวันนี้ */}
-                <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                     <div className="flex items-baseline justify-between gap-3">
                         <div className="flex items-baseline gap-2">
                             <span className="text-base font-semibold text-slate-800">วันนี้</span>
@@ -245,7 +249,7 @@ export default function TransactionPage({ userId, onNavigate }) {
                         </div>
                     ) : (
                         <>
-                            <div className="-mx-5 border-y border-slate-100">
+                            <div className="-mx-4 sm:-mx-5 border-y border-slate-100">
                                 {todayItems.slice(0, 5).map((t, i) => (
                                     <TxnRow key={t.id} item={t} bordered={i > 0} animate={t.id === addedId} />
                                 ))}

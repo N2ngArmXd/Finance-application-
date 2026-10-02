@@ -26,7 +26,9 @@ const FieldError = ({ text }) => (
     </span>
 );
 
-const inputBase = 'h-12 px-3.5 rounded-xl border bg-slate-50 text-[15px] text-slate-800 outline-none transition-colors focus:bg-white focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10';
+const inputBase = 'h-12 px-3.5 rounded-xl border bg-slate-50 text-base sm:text-[15px] text-slate-800 outline-none transition-colors focus:bg-white focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10';
+
+const PREVIEW_GRID = 'grid grid-cols-[40px_minmax(0,1fr)_auto] sm:grid-cols-[52px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-x-2 sm:gap-x-0 px-3 sm:px-4';
 
 const segClass = (active) =>
     `rounded-[9px] font-semibold transition-all ${active
@@ -34,7 +36,7 @@ const segClass = (active) =>
         : 'text-slate-500 hover:text-slate-700'
     }`;
 
-// modal สร้าง/แก้ไขรายการผ่อน: ฟอร์มซ้าย + ตารางจำลองขวา
+// modal สร้าง/แก้ไขรายการผ่อน: ฟอร์มซ้าย + ตารางจำลองขวา (มือถือ: เต็มจอ ฟอร์มบน ตารางล่าง)
 // paused = มี dialog ยืนยันซ้อนอยู่ (ไม่ให้ Esc ปิดฟอร์ม)
 export default function InstallmentForm({ mode, initial, paused = false, onCancel, onSubmit }) {
     const [form, setForm] = useState(initial);
@@ -75,7 +77,7 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-slate-900/40 flex items-start md:items-center justify-center p-4 overflow-y-auto animate-fade-in"
+            className="fixed inset-0 z-50 bg-slate-900/40 flex items-start md:items-center justify-center sm:p-4 overflow-y-auto animate-fade-in"
             onClick={onCancel}
         >
             <form
@@ -83,18 +85,18 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
-                className="w-[1000px] max-w-full my-4 bg-white rounded-3xl shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden animate-zoom-in"
+                className="w-[1000px] max-w-full h-dvh sm:h-auto sm:my-4 bg-white sm:rounded-3xl shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0 animate-zoom-in"
             >
-                <div className="h-16 shrink-0 flex items-center justify-between pl-6 pr-3 border-b border-slate-100">
+                <div className="h-14 sm:h-16 shrink-0 flex items-center justify-between pl-4 sm:pl-6 pr-2 sm:pr-3 border-b border-slate-100">
                     <span className="text-[17px] font-semibold text-slate-800">{isEdit ? 'แก้ไขรายการผ่อน' : 'สร้างรายการผ่อนใหม่'}</span>
                     <button type="button" onClick={onCancel} aria-label="ปิด" className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[440px_minmax(0,1fr)] max-h-[calc(92vh-144px)] overflow-y-auto">
+                <div className="flex-1 min-h-0 sm:flex-none grid grid-cols-1 lg:grid-cols-[440px_minmax(0,1fr)] sm:max-h-[calc(92vh-144px)] overflow-y-auto">
                     {/* ฟอร์ม */}
-                    <div className="px-6 pt-5 pb-6 flex flex-col gap-[18px]">
+                    <div className="px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-[18px]">
                         <label className="flex flex-col gap-2">
                             <span className="text-sm font-semibold text-slate-700">ชื่อรายการ <span className="text-expense-600">*</span></span>
                             <input
@@ -110,14 +112,14 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                             <label className={`flex flex-col gap-0.5 pt-3.5 pb-3 px-[18px] rounded-2xl bg-brand-50 cursor-text ${amountErr ? 'ring-2 ring-inset ring-expense-600' : ''}`}>
                                 <span className="text-[13px] leading-[18px] font-semibold text-brand-700">ยอดจัด / เงินต้น <span className="text-expense-600">*</span></span>
                                 <span className="flex items-baseline gap-1">
-                                    <span className="text-[28px] leading-[52px] font-semibold text-brand-600">฿</span>
+                                    <span className="text-2xl sm:text-[28px] leading-[44px] sm:leading-[52px] font-semibold text-brand-600">฿</span>
                                     <input
                                         value={toDisplay(form.totalAmount)}
                                         onChange={(e) => set({ totalAmount: sanitize(e.target.value) })}
                                         inputMode="decimal"
                                         placeholder="0.00"
                                         aria-label="ยอดจัด"
-                                        className="flex-1 min-w-0 w-0 bg-transparent outline-none p-0 text-[44px] leading-[52px] font-bold tracking-tight tabular-nums text-brand-600 placeholder:text-brand-200"
+                                        className="flex-1 min-w-0 w-0 bg-transparent outline-none p-0 text-[36px] sm:text-[44px] leading-[44px] sm:leading-[52px] font-bold tracking-tight tabular-nums text-brand-600 placeholder:text-brand-200"
                                     />
                                 </span>
                             </label>
@@ -214,11 +216,11 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                     </div>
 
                     {/* สรุป + ตารางจำลอง */}
-                    <div className="bg-slate-50 lg:border-l border-slate-100 px-6 pt-5 pb-6 flex flex-col gap-4 min-w-0">
-                        <div className="bg-white border border-slate-200 rounded-2xl px-5 py-[18px] flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                    <div className="bg-slate-50 lg:border-l border-slate-100 px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-4 min-w-0">
+                        <div className="bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-[18px] flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                             <div className="flex flex-col">
                                 <span className="text-[13px] font-semibold text-brand-700">ยอดผ่อนต่อเดือน</span>
-                                <span className={`text-[44px] leading-[52px] font-bold tracking-tight tabular-nums ${preview ? 'text-brand-600' : 'text-slate-300'}`}>
+                                <span className={`text-[36px] leading-[44px] sm:text-[44px] sm:leading-[52px] [overflow-wrap:anywhere] font-bold tracking-tight tabular-nums ${preview ? 'text-brand-600' : 'text-slate-300'}`}>
                                     {preview ? money(preview.monthlyPayment) : '฿—'}
                                 </span>
                             </div>
@@ -243,16 +245,17 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                                     </span>
                                 </div>
                                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                                    <div className="grid grid-cols-[52px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] h-9 items-center px-4 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500">
-                                        <span>งวด</span><span>วันครบกำหนด</span><span className="text-right">ค่างวด</span><span className="text-right">เงินต้นคงเหลือ</span>
+                                    {/* มือถือซ่อนคอลัมน์เงินต้นคงเหลือ (ที่ไม่พอสำหรับ 4 คอลัมน์ตัวเลข) */}
+                                    <div className={`${PREVIEW_GRID} h-9 items-center bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500`}>
+                                        <span>งวด</span><span>วันครบกำหนด</span><span className="text-right">ค่างวด</span><span className="hidden sm:block text-right">เงินต้นคงเหลือ</span>
                                     </div>
                                     <div className="max-h-[316px] overflow-y-auto">
                                         {preview.schedule.map((r, i) => (
-                                            <div key={r.month} className={`grid grid-cols-[52px_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)] min-h-10 items-center px-4 text-sm tabular-nums ${i ? 'border-t border-slate-100' : ''}`}>
+                                            <div key={r.month} className={`${PREVIEW_GRID} min-h-10 items-center text-sm tabular-nums ${i ? 'border-t border-slate-100' : ''}`}>
                                                 <span className="font-semibold text-slate-700">{r.month}</span>
                                                 <span className="text-slate-600">{formatShortDate(r.date)}</span>
                                                 <span className="text-right font-semibold text-brand-600">{money(r.payment)}</span>
-                                                <span className="text-right text-slate-500">{money(r.remaining)}</span>
+                                                <span className="hidden sm:block text-right text-slate-500">{money(r.remaining)}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -270,22 +273,23 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                     </div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-t border-slate-200">
+                {/* มือถือ: ข้อความเตือนเต็มแถวด้านบน ปุ่มอยู่แถวล่าง */}
+                <div className="shrink-0 flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200">
                     {isEdit ? (
-                        <div className="flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-warn-50 text-warn-700 text-[13px] leading-[18px] font-medium">
+                        <div className="basis-full sm:basis-auto flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-[10px] bg-warn-50 text-warn-700 text-[13px] leading-[18px] font-medium">
                             <TriangleAlert size={16} className="shrink-0" />
                             ระบบจะคำนวณตารางใหม่ งวดที่จ่ายเกินช่วงใหม่จะถูกตัดออก
                         </div>
                     ) : (
-                        <span className="flex-1 text-[13px] text-slate-500"><span className="text-expense-600">*</span> จำเป็นต้องกรอก</span>
+                        <span className="hidden sm:block flex-1 text-[13px] text-slate-500"><span className="text-expense-600">*</span> จำเป็นต้องกรอก</span>
                     )}
-                    <button type="button" onClick={onCancel} className="w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50">
+                    <button type="button" onClick={onCancel} className="w-24 sm:w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50">
                         ยกเลิก
                     </button>
                     <button
                         type="submit"
                         disabled={!preview}
-                        className="w-[220px] h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
+                        className="flex-1 sm:flex-none sm:w-[220px] h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed"
                     >
                         <Save size={18} /> {isEdit ? 'บันทึกการแก้ไข' : 'บันทึกตารางผ่อน'}
                     </button>

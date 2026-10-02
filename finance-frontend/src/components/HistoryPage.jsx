@@ -372,21 +372,21 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4 animate-zoom-in">
             <div className="flex items-baseline justify-between gap-4 mb-2">
-                <h1 className="text-2xl font-bold text-slate-800">ประวัติธุรกรรม</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">ประวัติธุรกรรม</h1>
                 <span className="text-sm text-slate-500">{totalElements} รายการ</span>
             </div>
 
             {/* ค้นหา + ตัวกรอง */}
             <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                <div className="flex flex-wrap gap-3">
-                    <div className="flex-1 min-w-[220px] h-11 flex items-center gap-2.5 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:bg-white focus-within:border-brand-500 transition-colors">
+                <div className="flex gap-2 sm:gap-3">
+                    <div className="flex-1 min-w-0 h-11 flex items-center gap-2.5 px-3.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:bg-white focus-within:border-brand-500 transition-colors">
                         <Search size={18} className="shrink-0 text-slate-500" />
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={(e) => { resetToFirstPage(); setSearchTerm(e.target.value); }}
                             placeholder="ค้นหารายละเอียด / หมวดหมู่ / รหัส"
-                            className="flex-1 min-w-0 bg-transparent outline-none text-[15px] text-slate-800"
+                            className="flex-1 min-w-0 bg-transparent outline-none text-base sm:text-[15px] text-slate-800"
                         />
                         {searchTerm && (
                             <button onClick={() => { resetToFirstPage(); setSearchTerm(''); }} aria-label="ล้างคำค้นหา" className="text-slate-400 hover:text-slate-600">
@@ -394,10 +394,11 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                             </button>
                         )}
                     </div>
-                    <label className="relative h-11 pl-3.5 pr-9 flex items-center gap-2 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
+                    {/* มือถือ: เหลือแค่ไอคอนเรียงลำดับ (ตัวเลือกเต็มอยู่ใน select ของระบบ) */}
+                    <label className="relative shrink-0 h-11 w-11 sm:w-auto sm:pl-3.5 sm:pr-9 flex items-center justify-center gap-2 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer">
                         <ArrowUpDown size={16} className="text-slate-500" />
-                        {SORT_OPTIONS[sortIndex]?.label}
-                        <ChevronDown size={16} className="absolute right-3 text-slate-500 pointer-events-none" />
+                        <span className="hidden sm:inline">{SORT_OPTIONS[sortIndex]?.label}</span>
+                        <ChevronDown size={16} className="hidden sm:block absolute right-3 text-slate-500 pointer-events-none" />
                         <select
                             aria-label="เรียงลำดับ"
                             value={sortIndex}
@@ -413,26 +414,44 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                     </label>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                    {presets.map((p) => (
+                {/* มือถือ: ประเภทเต็มแถวอยู่บน, ช่วงวันที่ + หมวดหมู่เป็นแถวเลื่อนแนวนอน · sm ขึ้นไป: เรียงต่อกันแถวเดียวเหมือนเดิม */}
+                <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                    <div className="flex gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:contents">
+                        {presets.map((p) => (
+                            <button
+                                key={p.id}
+                                onClick={() => { setShowCustomDate(false); setDateRange(p.range[0], p.range[1]); }}
+                                className={presetChip(activePreset?.id === p.id)}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
                         <button
-                            key={p.id}
-                            onClick={() => { setShowCustomDate(false); setDateRange(p.range[0], p.range[1]); }}
-                            className={presetChip(activePreset?.id === p.id)}
+                            onClick={() => setShowCustomDate((s) => !s)}
+                            className={presetChip(showCustomDate || (hasDateFilter && !activePreset))}
                         >
-                            {p.label}
+                            <Calendar size={16} /> กำหนดเอง
                         </button>
-                    ))}
-                    <button
-                        onClick={() => setShowCustomDate((s) => !s)}
-                        className={presetChip(showCustomDate || (hasDateFilter && !activePreset))}
-                    >
-                        <Calendar size={16} /> กำหนดเอง
-                    </button>
+                        <label className={`relative sm:order-last ${presetChip(filterCategory !== 'ALL')} pr-8 cursor-pointer`}>
+                            {filterCategory !== 'ALL' ? categoryName : 'หมวดหมู่'}
+                            <ChevronDown size={14} className="absolute right-3 text-slate-500 pointer-events-none" />
+                            <select
+                                aria-label="หมวดหมู่"
+                                value={filterCategory}
+                                onChange={(e) => { resetToFirstPage(); setFilterCategory(e.target.value); }}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                            >
+                                <option value="ALL">ทุกหมวดหมู่</option>
+                                {categories
+                                    .filter((c) => filterType === 'ALL' || (filterType === 'SAVING' ? isSavingType(c.type) : c.type === filterType))
+                                    .map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                            </select>
+                        </label>
+                    </div>
 
-                    <span className="w-px h-6 bg-slate-200 mx-1" />
+                    <span className="hidden sm:block w-px h-6 bg-slate-200 mx-1" />
 
-                    <div className="flex gap-0.5 p-[3px] bg-slate-100 rounded-[10px]">
+                    <div className="order-first sm:order-none grid grid-cols-4 sm:flex gap-0.5 p-[3px] bg-slate-100 rounded-[10px]">
                         {[
                             { v: 'ALL', label: 'ทั้งหมด', tone: 'text-brand-700' },
                             { v: 'INCOME', label: 'รายรับ', tone: 'text-income-600' },
@@ -442,50 +461,34 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                             <button
                                 key={opt.v}
                                 onClick={() => { resetToFirstPage(); setFilterType(opt.v); }}
-                                className={`h-[30px] px-3 rounded-lg text-[13px] transition-all ${filterType === opt.v ? `bg-white font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.08)] ${opt.tone}` : 'font-medium text-slate-600 hover:text-slate-800'}`}
+                                className={`h-9 sm:h-[30px] px-3 rounded-lg text-[13px] transition-all ${filterType === opt.v ? `bg-white font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.08)] ${opt.tone}` : 'font-medium text-slate-600 hover:text-slate-800'}`}
                             >
                                 {opt.label}
                             </button>
                         ))}
                     </div>
-
-                    <label className={`relative ${presetChip(filterCategory !== 'ALL')} pr-8 cursor-pointer`}>
-                        {filterCategory !== 'ALL' ? categoryName : 'หมวดหมู่'}
-                        <ChevronDown size={14} className="absolute right-3 text-slate-500 pointer-events-none" />
-                        <select
-                            aria-label="หมวดหมู่"
-                            value={filterCategory}
-                            onChange={(e) => { resetToFirstPage(); setFilterCategory(e.target.value); }}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                        >
-                            <option value="ALL">ทุกหมวดหมู่</option>
-                            {categories
-                                .filter((c) => filterType === 'ALL' || (filterType === 'SAVING' ? isSavingType(c.type) : c.type === filterType))
-                                .map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
-                        </select>
-                    </label>
                 </div>
 
                 {showCustomDate && (
                     <div className="flex flex-wrap items-end gap-3 animate-fade-in">
-                        <label className="flex flex-col gap-1.5">
+                        <label className="flex-1 sm:flex-none min-w-[140px] flex flex-col gap-1.5">
                             <span className="text-xs text-slate-500">ตั้งแต่วันที่</span>
                             <input
                                 type="date"
                                 value={filterStart}
                                 max={filterEnd || undefined}
                                 onChange={(e) => setDateRange(e.target.value, filterEnd)}
-                                className="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:border-brand-500"
+                                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-base sm:text-sm outline-none focus:border-brand-500"
                             />
                         </label>
-                        <label className="flex flex-col gap-1.5">
+                        <label className="flex-1 sm:flex-none min-w-[140px] flex flex-col gap-1.5">
                             <span className="text-xs text-slate-500">ถึงวันที่</span>
                             <input
                                 type="date"
                                 value={filterEnd}
                                 min={filterStart || undefined}
                                 onChange={(e) => setDateRange(filterStart, e.target.value)}
-                                className="h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-sm outline-none focus:border-brand-500"
+                                className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-slate-50 text-base sm:text-sm outline-none focus:border-brand-500"
                             />
                         </label>
                     </div>
@@ -510,24 +513,24 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
             </div>
 
             {/* สรุปยอด (ตามตัวกรอง) */}
-            <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 grid grid-cols-2 sm:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-x-8 gap-y-4 items-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-4 grid grid-cols-2 sm:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-x-4 sm:gap-x-8 gap-y-4 items-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs text-slate-600"><ArrowUp size={12} className="text-income-600" />รายรับ</span>
-                    <span className="text-xl font-bold text-income-600 tabular-nums">+฿{formatMoney(totalIncome)}</span>
+                    <span className="text-lg sm:text-xl font-bold text-income-600 tabular-nums [overflow-wrap:anywhere]">+฿{formatMoney(totalIncome)}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs text-slate-600"><ArrowDown size={12} className="text-expense-600" />รายจ่าย</span>
-                    <span className="text-xl font-bold text-expense-600 tabular-nums">−฿{formatMoney(totalExpense)}</span>
+                    <span className="text-lg sm:text-xl font-bold text-expense-600 tabular-nums [overflow-wrap:anywhere]">−฿{formatMoney(totalExpense)}</span>
                 </div>
                 <div className="flex flex-col gap-0.5" title="ฝากเข้ากระปุก − ถอนออกจากกระปุก (ไม่นับเป็นรายจ่าย)">
                     <span className="flex items-center gap-1 text-xs text-slate-600"><PiggyBank size={12} className="text-brand-600" />ออม</span>
-                    <span className={`text-xl font-bold tabular-nums ${totalSaving < 0 ? 'text-slate-700' : 'text-brand-600'}`}>
+                    <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${totalSaving < 0 ? 'text-slate-700' : 'text-brand-600'}`}>
                         {formatSigned(totalSaving, true)}
                     </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                     <span className="text-xs text-slate-600">สุทธิ · {netAmount < 0 ? 'ใช้เกินรายรับ' : 'เหลือใช้'}</span>
-                    <span className={`text-xl font-bold tabular-nums ${netAmount < 0 ? 'text-expense-600' : 'text-income-600'}`}>{formatSigned(netAmount, true)}</span>
+                    <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${netAmount < 0 ? 'text-expense-600' : 'text-income-600'}`}>{formatSigned(netAmount, true)}</span>
                 </div>
                 <div className="col-span-2 sm:col-span-1 flex flex-col gap-2">
                     <div className="flex justify-between gap-2 text-xs text-slate-500">
@@ -608,7 +611,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                         return (
                             <React.Fragment key={g.key}>
                                 {groupByDay && (
-                                    <div className={`h-10 flex items-center justify-between gap-3 pl-5 pr-12 bg-slate-50 border-b border-slate-100 ${gi ? 'border-t' : ''}`}>
+                                    <div className={`h-10 flex items-center justify-between gap-3 px-4 sm:pl-5 sm:pr-12 bg-slate-50 border-b border-slate-100 ${gi ? 'border-t' : ''}`}>
                                         <span className="text-[13px] font-semibold text-slate-600">
                                             {dayLabel(g.key)} <span className="font-normal text-slate-500">· {g.rows.length} รายการ</span>
                                         </span>
@@ -640,7 +643,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
 
                 {/* Pagination */}
                 {!loading && !loadError && totalElements > 0 && (
-                    <div className="px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div className="px-4 sm:px-5 py-4 border-t border-slate-100 flex flex-wrap items-center justify-center sm:justify-between gap-3">
                         <span className="text-[13px] text-slate-500">
                             แสดง {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, totalElements)} จาก {totalElements} รายการ
                         </span>
@@ -679,7 +682,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
 
             {/* แถบเมื่อเลือกหลายรายการ */}
             {selectedIds.size > 0 && !editing && (
-                <div className="fixed left-1/2 bottom-7 z-50 w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2 h-14 flex items-center gap-2 pl-[18px] pr-2 rounded-2xl bg-slate-900 text-white shadow-[0_12px_32px_-8px_rgba(15,23,42,0.45)] animate-toast-in">
+                <div className="fixed left-1/2 bottom-float z-50 w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2 h-14 flex items-center gap-2 pl-[18px] pr-2 rounded-2xl bg-slate-900 text-white shadow-[0_12px_32px_-8px_rgba(15,23,42,0.45)] animate-toast-in">
                     <span className="flex-1 text-sm font-medium">เลือกแล้ว {selectedIds.size} รายการ</span>
                     <button onClick={clearSelection} className="h-10 px-3 rounded-[10px] text-sm font-semibold text-slate-300 hover:text-white">
                         ยกเลิก
@@ -688,7 +691,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                         onClick={() => setConfirmIds([...selectedIds])}
                         className="h-10 px-3.5 rounded-[10px] bg-expense-600 hover:bg-expense-700 text-sm font-semibold flex items-center gap-1.5"
                     >
-                        <Trash2 size={16} /> ลบ {selectedIds.size} รายการ
+                        <Trash2 size={16} /> ลบ<span className="hidden sm:inline"> {selectedIds.size} รายการ</span>
                     </button>
                 </div>
             )}
@@ -697,15 +700,16 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
             {editing && (
                 <>
                     <div onClick={closeEdit} className="fixed inset-0 z-40 bg-slate-900/30 animate-fade-in" />
-                    <aside role="dialog" aria-modal="true" aria-label="รายละเอียดรายการ" className="fixed top-0 right-0 bottom-0 z-50 w-[440px] max-w-full bg-white flex flex-col shadow-[-24px_0_48px_-16px_rgba(15,23,42,0.3)] animate-drawer-in">
-                        <div className="h-16 shrink-0 flex items-center justify-between pl-6 pr-3 border-b border-slate-100">
+                    {/* มือถือ drawer กว้างเต็มจอ จึงเว้น safe area บน/ล่าง (รอยบาก / แถบ home) */}
+                    <aside role="dialog" aria-modal="true" aria-label="รายละเอียดรายการ" className="fixed top-0 right-0 bottom-0 z-50 w-[440px] max-w-full bg-white flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[-24px_0_48px_-16px_rgba(15,23,42,0.3)] animate-drawer-in">
+                        <div className="h-16 shrink-0 flex items-center justify-between pl-4 sm:pl-6 pr-3 border-b border-slate-100">
                             <span className="text-[17px] font-semibold text-slate-800">รายละเอียดรายการ</span>
                             <button onClick={closeEdit} aria-label="ปิด" className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100">
                                 <X size={20} />
                             </button>
                         </div>
 
-                        <div className="shrink-0 flex items-center gap-3.5 px-6 py-5 border-b border-slate-100">
+                        <div className="shrink-0 flex items-center gap-3.5 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100">
                             <CategoryAvatar name={editingItem.categoryIcon} size={48} />
                             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                                 <span className="text-base font-semibold text-slate-800 truncate">{editingItem.description || editingItem.categoryName}</span>
@@ -722,7 +726,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                         </div>
 
                         {editingFromSavings ? (
-                            <div className="flex-1 overflow-y-auto px-6 pt-5 pb-6 flex flex-col gap-4">
+                            <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-4">
                                 <div className="flex gap-3 items-start p-4 rounded-xl bg-gold-50">
                                     <span className="w-9 h-9 shrink-0 rounded-full bg-white flex items-center justify-center">
                                         <PiggyBank size={18} className="text-gold-700" />
@@ -748,7 +752,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                                 )}
                             </div>
                         ) : (
-                        <div className="flex-1 overflow-y-auto px-6 pt-5 pb-6 flex flex-col gap-6">
+                        <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-6">
                             <TxnForm
                                 type={editing.type}
                                 onTypeChange={(type) => type !== editing.type && patchEdit({ type, categoryId: null })}
@@ -773,10 +777,10 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                         )}
 
                         {editingFromSavings ? (
-                            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-slate-200">
+                            <div className="shrink-0 flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-200">
                                 <button
                                     onClick={closeEdit}
-                                    className="w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50"
+                                    className="w-24 sm:w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50"
                                 >
                                     ปิด
                                 </button>
@@ -788,11 +792,11 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                                 </button>
                             </div>
                         ) : (
-                        <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-slate-200">
+                        <div className="shrink-0 flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-200">
                             <button
                                 onClick={closeEdit}
                                 disabled={savingEdit}
-                                className="w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50 disabled:text-slate-400"
+                                className="w-24 sm:w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50 disabled:text-slate-400"
                             >
                                 ยกเลิก
                             </button>
