@@ -35,6 +35,13 @@ export const formatDayLabel = (value) => {
     });
 };
 
+// วันที่แบบสั้น เช่น "2 ต.ค. 2569" (รับ Date หรือ string YYYY-MM-DD)
+export const formatShortDate = (value) => {
+    const d = typeof value === 'string' && value.length === 10 ? new Date(`${value}T00:00:00`) : new Date(value);
+    if (isNaN(d.getTime())) return '-';
+    return d.toLocaleDateString('th-TH-u-ca-buddhist', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
 // เวลา HH:mm
 export const formatTime = (value) => {
     const d = new Date(value);
