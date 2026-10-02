@@ -22,6 +22,9 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
 
     private final CategoriesRepository categoriesRepository;
 
+    // หมวดที่ใช้กับรายจ่ายที่สร้างอัตโนมัติตอนกดจ่ายงวดผ่อน — ดู InstallmentService.updatePaidPeriod
+    public static final String INSTALLMENT_CATEGORY_NAME = "ค่างวด-ผ่อนชำระ";
+
     // {name, type, icon} — icon เก็บเป็น "ชื่อไอคอน lucide" (map เป็น component ฝั่งหน้าเว็บ)
     private static final String[][] DEFAULTS = {
             { "อาหาร", "EXPENSE", "Utensils" },
@@ -32,6 +35,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "สุขภาพ", "EXPENSE", "HeartPulse" },
             { "บันเทิง", "EXPENSE", "Music" },
             { "การศึกษา", "EXPENSE", "GraduationCap" },
+            { INSTALLMENT_CATEGORY_NAME, "EXPENSE", "CreditCard" },
             { "อื่นๆ", "EXPENSE", "Circle" },
             { "เงินเดือน", "INCOME", "Wallet" },
             { "โบนัส", "INCOME", "Coins" },

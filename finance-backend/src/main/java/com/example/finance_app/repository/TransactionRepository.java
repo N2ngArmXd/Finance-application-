@@ -73,6 +73,23 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("dateFrom") LocalDateTime dateFrom,
             @Param("dateTo") LocalDateTime dateTo);
 
+    // ยกเลิกรายจ่ายของงวดผ่อน (soft delete) เมื่อยกเลิกสถานะจ่ายงวดนั้น
+    @Modifying
+    @Transactional
+    @Query("UPDATE Transaction t SET t.isDeleted = true WHERE t.installmentsId = :installmentsId "
+            + "AND t.installmentPeriod IN :periods AND t.isDeleted = false")
+    int softDeleteInstallmentPayments(@Param("installmentsId") Long installmentsId,
+            @Param("periods") List<Integer> periods);
+
+    // รายจ่ายค่างวดที่จ่ายในช่วง [dateFrom, dateTo) (dashboard: หางวดค้างที่มาจ่ายในเดือนนี้)
+    @Query("SELECT t FROM Transaction t WHERE t.userId.id = :userId AND t.isDeleted = false "
+            + "AND t.installmentsId IS NOT NULL "
+            + "AND t.transactionDate >= :dateFrom AND t.transactionDate < :dateTo")
+    List<Transaction> findInstallmentPayments(
+            @Param("userId") Long userId,
+            @Param("dateFrom") LocalDateTime dateFrom,
+            @Param("dateTo") LocalDateTime dateTo);
+
     // รายจ่ายรวมแยกหมวดในช่วงวันที่ [dateFrom, dateTo) -> [categoryId, name, icon, sum] (dashboard)
     @Query("SELECT c.id, c.name, c.icon, SUM(t.amount) FROM Transaction t JOIN t.categoryId c "
             + "WHERE t.userId.id = :userId AND t.isDeleted = false AND c.type = 'EXPENSE' "

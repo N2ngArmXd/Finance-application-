@@ -12,6 +12,13 @@ function App() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('dashboard');
+  // รายการผ่อนที่ต้องเปิดให้ทันทีเมื่อกดมาจากหน้าอื่น (เช่น dashboard)
+  const [installmentFocusId, setInstallmentFocusId] = useState(null);
+
+  const openInstallment = (installmentsId = null) => {
+    setInstallmentFocusId(installmentsId);
+    setActivePage('installment');
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -52,7 +59,7 @@ function App() {
         {/* Content Section */}
         <main className="p-8">
           {activePage === 'dashboard' && (
-            <DashboardPage userId={user.id} />
+            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} />
           )}
 
           {activePage === 'transaction' && (
@@ -62,7 +69,11 @@ function App() {
             <HistoryPage userId={user.id} />
           )}
           {activePage === 'installment' && (
-            <Installments userId={user.id} />
+            <Installments
+              userId={user.id}
+              focusId={installmentFocusId}
+              onFocusHandled={() => setInstallmentFocusId(null)}
+            />
           )}
         </main>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Coins, Check, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Coins, Check, AlertTriangle, ArrowRight } from 'lucide-react';
 import CategoryIcon from '../utils/categoryIcons';
-import { showSuccess, showError, showConfirm } from '../utils/swr';
+import { showError } from '../utils/swr';
 import { formatDate } from '../utils/format';
 
 const TOP_CATEGORIES = 5;
@@ -30,12 +30,11 @@ const percentChange = (current, previous) => {
     return ((current - previous) / previous) * 100;
 };
 
-export default function DashboardPage({ userId }) {
+export default function DashboardPage({ userId, onOpenInstallment }) {
     const thisMonth = toMonthKey(new Date());
     const [month, setMonth] = useState(thisMonth);
     const [data, setData] = useState(null);
     const [fetching, setFetching] = useState(true);
-    const [payingKey, setPayingKey] = useState(null);
 
     const fetchSummary = async () => {
         setFetching(true);
@@ -61,47 +60,6 @@ export default function DashboardPage({ userId }) {
     useEffect(() => {
         if (userId) fetchSummary();
     }, [userId, month]);
-
-    const handlePay = async (row) => {
-        const markingPaid = !row.paid;
-        const detailHtml = `
-            <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
-                <div><span style="color:#94a3b8;">รายการ:</span> <b>${row.installmentsName}</b></div>
-                <div><span style="color:#94a3b8;">งวดที่:</span> <b>${row.period} / ${row.totalPeriods}</b></div>
-                <div><span style="color:#94a3b8;">กำหนดชำระ:</span> <b>${formatDate(row.dueDate)}</b></div>
-                <div><span style="color:#94a3b8;">ค่างวด:</span> <b style="color:#12305C;">${formatCurrency(row.amount)}</b></div>
-            </div>
-        `;
-        const confirmResult = await showConfirm(
-            markingPaid ? 'ยืนยันว่าจ่ายงวดนี้แล้ว?' : 'ยกเลิกสถานะจ่ายงวดนี้?', '', detailHtml, 'question');
-        if (!confirmResult.isConfirmed) return;
-
-        const key = `${row.installmentsId}-${row.period}`;
-        setPayingKey(key);
-        try {
-            const response = await fetch('/api/finance-app/installments/pay-period', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    installmentsId: row.installmentsId,
-                    userId,
-                    period: row.period,
-                    paid: markingPaid
-                })
-            });
-            if (response.ok) {
-                showSuccess('บันทึกแล้ว!', markingPaid ? `บันทึกการจ่ายงวดที่ ${row.period} เรียบร้อย` : `ยกเลิกสถานะจ่ายงวดที่ ${row.period} แล้ว`);
-                await fetchSummary();
-            } else {
-                showError('บันทึกไม่สำเร็จ', (await response.text()) || 'กรุณาลองใหม่อีกครั้ง');
-            }
-        } catch (error) {
-            console.error('Pay period error:', error);
-            showError('ข้อผิดพลาด', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
-        } finally {
-            setPayingKey(null);
-        }
-    };
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
@@ -145,7 +103,7 @@ export default function DashboardPage({ userId }) {
                     <KpiRow data={data} />
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <ExpenseByCategory items={data.expenseByCategory} total={data.totalExpense} />
-                        <InstallmentsDue data={data} payingKey={payingKey} onPay={handlePay} />
+                        <InstallmentsDue data={data} onOpen={onOpenInstallment} />
                     </div>
                 </div>
             )}
@@ -154,8 +112,14 @@ export default function DashboardPage({ userId }) {
 }
 
 function KpiRow({ data }) {
-    const dueCount = data.installmentsDue.length;
-    const paidCount = data.installmentsDue.filter((r) => r.paid).length;
+    // นับเฉพาะงวดของเดือนนี้ (งวดค้างชำระแสดงแยก)
+    const thisMonthRows = data.installmentsDue.filter((r) => !r.overdue);
+    const dueCount = thisMonthRows.length;
+    const paidCount = thisMonthRows.filter((r) => r.paid).length;
+    let installmentSub = dueCount === 0 ? 'ไม่มีงวดที่ต้องจ่าย' : `จ่ายแล้ว ${paidCount} / ${dueCount} รายการ`;
+    if (data.installmentOverdueTotal > 0) {
+        installmentSub += ` · ค้าง ${formatCurrency(data.installmentOverdueTotal)}`;
+    }
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -187,7 +151,7 @@ function KpiRow({ data }) {
                 value={data.installmentDueTotal}
                 icon={<Coins size={20} />}
                 tone="warn"
-                sub={dueCount === 0 ? 'ไม่มีงวดที่ต้องจ่าย' : `จ่ายแล้ว ${paidCount} / ${dueCount} รายการ`}
+                sub={installmentSub}
             />
         </div>
     );
@@ -281,7 +245,28 @@ function ExpenseByCategory({ items, total }) {
     );
 }
 
-function InstallmentsDue({ data, payingKey, onPay }) {
+
+// สถานะงวด: ค้างชำระ > จ่ายแล้ว > ถึงกำหนดแล้ว > ยังไม่ถึงกำหนด
+function DueStatus({ row, today }) {
+    if (row.overdue) {
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-expense-100 text-expense-600">ค้างชำระ</span>;
+    }
+    if (row.paid) {
+        return (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-income-100 text-income-700">
+                <Check size={14} /> จ่ายแล้ว
+            </span>
+        );
+    }
+    // แยก yyyy-MM-dd เองให้เป็นเวลาท้องถิ่น (new Date('yyyy-MM-dd') จะได้ UTC)
+    const [y, m, d] = row.dueDate.split('-').map(Number);
+    if (new Date(y, m - 1, d) <= today) {
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-warn-100 text-warn-600">ถึงกำหนดแล้ว</span>;
+    }
+    return <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-400">ยังไม่ถึงกำหนด</span>;
+}
+
+function InstallmentsDue({ data, onOpen }) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -290,7 +275,16 @@ function InstallmentsDue({ data, payingKey, onPay }) {
 
     return (
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold text-slate-700 mb-4">ค่างวดที่ต้องจ่ายเดือนนี้</h2>
+            <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-bold text-slate-700">ค่างวดที่ต้องจ่ายเดือนนี้</h2>
+                <button
+                    type="button"
+                    onClick={() => onOpen()}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
+                >
+                    ไปหน้าตารางผ่อน <ArrowRight size={16} />
+                </button>
+            </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
@@ -308,61 +302,39 @@ function InstallmentsDue({ data, payingKey, onPay }) {
                 </div>
             </div>
 
+            {data.paidLateCount > 0 && (
+                <div className="mb-4 px-4 py-2.5 rounded-2xl bg-warn-50 border border-warn-100 text-sm text-warn-600">
+                    เดือนนี้จ่ายงวดค้างจากเดือนก่อน {data.paidLateCount} งวด{' '}
+                    <b>{formatCurrency(data.paidLateTotal)}</b> (รวมอยู่ในรายจ่ายเดือนนี้แล้ว)
+                </div>
+            )}
+
             {data.installmentsDue.length === 0 ? (
                 <div className="text-center text-slate-400 py-8 border-2 border-dashed border-slate-100 rounded-2xl">
                     ไม่มีงวดที่ครบกำหนดในเดือนนี้
                 </div>
             ) : (
-                <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl">
-                    {data.installmentsDue.map((row) => {
-                        const key = `${row.installmentsId}-${row.period}`;
-                        const isProcessing = payingKey === key;
-                        // งวดที่ยังไม่ถึงกำหนดและยังไม่จ่าย กดไม่ได้ (เหมือนหน้าตารางผ่อน)
-                        // แยก yyyy-MM-dd เองให้เป็นเวลาท้องถิ่น (new Date('yyyy-MM-dd') จะได้ UTC)
-                        const [y, m, d] = row.dueDate.split('-').map(Number);
-                        const locked = !row.paid && new Date(y, m - 1, d) > today;
-                        return (
-                            <div key={key} className={`flex items-center justify-between gap-3 p-3 ${row.paid ? 'bg-income-50/60' : ''}`}>
-                                <div className="min-w-0">
-                                    <div className="font-semibold text-slate-700 truncate">{row.installmentsName}</div>
-                                    <div className="text-xs text-slate-500">
-                                        งวด {row.period}/{row.totalPeriods} · ครบกำหนด {formatDate(row.dueDate)}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0">
-                                    <span className="font-bold text-brand-600">{formatCurrency(row.amount)}</span>
-                                    {row.paid ? (
-                                        <button
-                                            type="button"
-                                            disabled={isProcessing}
-                                            onClick={() => onPay(row)}
-                                            title="คลิกเพื่อยกเลิกสถานะจ่าย"
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-income-100 text-income-700 hover:bg-income-200 transition-colors disabled:opacity-50"
-                                        >
-                                            <Check size={14} /> จ่ายแล้ว
-                                        </button>
-                                    ) : locked ? (
-                                        <button
-                                            type="button"
-                                            disabled
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-400 cursor-not-allowed"
-                                        >
-                                            ยังไม่ถึงกำหนด
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            disabled={isProcessing}
-                                            onClick={() => onPay(row)}
-                                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-brand-600 text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
-                                        >
-                                            {isProcessing ? 'กำลังบันทึก...' : 'จ่ายไปแล้ว'}
-                                        </button>
-                                    )}
+                <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
+                    {data.installmentsDue.map((row) => (
+                        <button
+                            type="button"
+                            key={`${row.installmentsId}-${row.period}`}
+                            onClick={() => onOpen(row.installmentsId)}
+                            title="เปิดในหน้าตารางผ่อน"
+                            className={`w-full text-left flex items-center justify-between gap-3 p-3 hover:bg-slate-50 transition-colors ${row.overdue ? 'bg-expense-50/50' : row.paid ? 'bg-income-50/60' : ''}`}
+                        >
+                            <div className="min-w-0">
+                                <div className="font-semibold text-slate-700 truncate">{row.installmentsName}</div>
+                                <div className="text-xs text-slate-500">
+                                    งวด {row.period}/{row.totalPeriods} · ครบกำหนด {formatDate(row.dueDate)}
                                 </div>
                             </div>
-                        );
-                    })}
+                            <div className="flex items-center gap-3 shrink-0">
+                                <span className="font-bold text-brand-600">{formatCurrency(row.amount)}</span>
+                                <DueStatus row={row} today={today} />
+                            </div>
+                        </button>
+                    ))}
                 </div>
             )}
         </div>

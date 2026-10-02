@@ -27,7 +27,13 @@ public class DashboardSummaryResponse {
     // ค่างวดที่ครบกำหนดในเดือนนี้
     private BigDecimal installmentDueTotal = BigDecimal.ZERO;
     private BigDecimal installmentPaidTotal = BigDecimal.ZERO;
+    // งวดของเดือนนี้ + งวดค้างชำระจากเดือนก่อน (overdue = true)
     private List<InstallmentDue> installmentsDue = new ArrayList<>();
+    private BigDecimal installmentOverdueTotal = BigDecimal.ZERO;
+
+    // งวดค้างของเดือนก่อน ๆ ที่มาจ่ายในเดือนนี้ (รวมอยู่ในรายจ่ายเดือนนี้แล้ว)
+    private BigDecimal paidLateTotal = BigDecimal.ZERO;
+    private int paidLateCount;
 
     // ค่างวดคงเหลือทั้งหมดของรายการที่ยังไม่ปิดยอด
     private BigDecimal totalDebtRemaining = BigDecimal.ZERO;
@@ -53,5 +59,6 @@ public class DashboardSummaryResponse {
         private BigDecimal amount;
         private LocalDate dueDate;
         private boolean paid;
+        private boolean overdue; // ครบกำหนดก่อนเดือนนี้และยังไม่จ่าย
     }
 }

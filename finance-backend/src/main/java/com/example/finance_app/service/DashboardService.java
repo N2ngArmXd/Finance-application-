@@ -6,7 +6,9 @@ import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -18,6 +20,7 @@ import com.example.finance_app.dto.response.DashboardSummaryResponse;
 import com.example.finance_app.dto.response.DashboardSummaryResponse.CategoryAmount;
 import com.example.finance_app.dto.response.DashboardSummaryResponse.InstallmentDue;
 import com.example.finance_app.entity.InstallmentsEntity;
+import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.repository.InstallmentsRepository;
 import com.example.finance_app.repository.TransactionRepository;
 
@@ -84,13 +87,20 @@ public class DashboardService {
         return new BigDecimal[] { income, expense };
     }
 
-    // งวดผ่อนที่ครบกำหนดในเดือนที่เลือก + หนี้ค่างวดคงเหลือ
+    // งวดผ่อนที่ครบกำหนดในเดือนที่เลือก + งวดค้างชำระ + หนี้ค่างวดคงเหลือ
     private void fillInstallments(DashboardSummaryResponse res, Long userId, YearMonth month) {
         BigDecimal dueTotal = BigDecimal.ZERO;
         BigDecimal paidTotal = BigDecimal.ZERO;
+        BigDecimal overdueTotal = BigDecimal.ZERO;
         BigDecimal debtRemaining = BigDecimal.ZERO;
+        // งวดค้างนับเฉพาะเดือนปัจจุบันหรือย้อนหลัง (เดือนอนาคตยังไม่รู้ว่าจะจ่ายทันไหม)
+        boolean showOverdue = !month.isAfter(YearMonth.now());
 
-        for (InstallmentsEntity item : installmentsRepository.findByUserIdAndIsDeletedFalse(userId)) {
+        List<InstallmentsEntity> items = installmentsRepository.findByUserIdAndIsDeletedFalse(userId);
+        Map<Long, InstallmentsEntity> itemsById = new HashMap<>();
+
+        for (InstallmentsEntity item : items) {
+            itemsById.put(item.getInstallmentsId(), item);
             int months = item.getInstallmentMonths() != null ? item.getInstallmentMonths() : 0;
             BigDecimal monthly = item.getMonthlyAmount() != null ? item.getMonthlyAmount() : BigDecimal.ZERO;
             Set<Integer> paid = parsePaidPeriods(item.getPaidPeriods());
@@ -103,16 +113,27 @@ public class DashboardService {
 
             for (int i = 1; i <= months; i++) {
                 LocalDate dueDate = item.getStartDate().plusMonths(i - 1);
-                if (!YearMonth.from(dueDate).equals(month)) {
+                YearMonth dueMonth = YearMonth.from(dueDate);
+                boolean isPaid = paid.contains(i);
+
+                if (dueMonth.isBefore(month)) {
+                    // งวดเดือนก่อน ๆ ที่ยังไม่จ่าย -> ยกมาเป็นค้างชำระ (รายการที่ปิดยอดแล้วไม่นับ)
+                    if (showOverdue && !closed && !isPaid) {
+                        res.getInstallmentsDue().add(new InstallmentDue(item.getInstallmentsId(),
+                                item.getInstallmentsName(), i, months, monthly, dueDate, false, true));
+                        overdueTotal = overdueTotal.add(monthly);
+                    }
                     continue;
                 }
-                boolean isPaid = paid.contains(i);
+                if (!dueMonth.equals(month)) {
+                    continue;
+                }
                 // รายการที่ปิดยอดแล้ว แสดงเฉพาะงวดที่จ่ายจริง (ไม่นับเป็นยอดที่ต้องจ่าย)
                 if (closed && !isPaid) {
                     continue;
                 }
                 res.getInstallmentsDue().add(new InstallmentDue(item.getInstallmentsId(),
-                        item.getInstallmentsName(), i, months, monthly, dueDate, isPaid));
+                        item.getInstallmentsName(), i, months, monthly, dueDate, isPaid, false));
                 dueTotal = dueTotal.add(monthly);
                 if (isPaid) {
                     paidTotal = paidTotal.add(monthly);
@@ -120,11 +141,31 @@ public class DashboardService {
             }
         }
 
-        // ยังไม่จ่ายขึ้นก่อน แล้วเรียงตามวันครบกำหนด
-        res.getInstallmentsDue().sort(Comparator.comparing(InstallmentDue::isPaid)
+        // งวดของเดือนก่อน ๆ ที่มาจ่ายในเดือนนี้ — ดูจากรายจ่ายค่างวดที่ระบบสร้างตอนกดจ่าย
+        BigDecimal paidLateTotal = BigDecimal.ZERO;
+        int paidLateCount = 0;
+        for (Transaction t : transactionRepository.findInstallmentPayments(userId,
+                month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay())) {
+            InstallmentsEntity item = itemsById.get(t.getInstallmentsId());
+            if (item == null || t.getInstallmentPeriod() == null) {
+                continue;
+            }
+            YearMonth dueMonth = YearMonth.from(item.getStartDate().plusMonths(t.getInstallmentPeriod() - 1));
+            if (dueMonth.isBefore(month)) {
+                paidLateTotal = paidLateTotal.add(t.getAmount());
+                paidLateCount++;
+            }
+        }
+
+        // ค้างชำระขึ้นก่อน -> ยังไม่จ่าย -> จ่ายแล้ว แล้วเรียงตามวันครบกำหนด
+        res.getInstallmentsDue().sort(Comparator
+                .comparingInt((InstallmentDue d) -> d.isOverdue() ? 0 : d.isPaid() ? 2 : 1)
                 .thenComparing(InstallmentDue::getDueDate));
         res.setInstallmentDueTotal(dueTotal);
         res.setInstallmentPaidTotal(paidTotal);
+        res.setInstallmentOverdueTotal(overdueTotal);
+        res.setPaidLateTotal(paidLateTotal);
+        res.setPaidLateCount(paidLateCount);
         res.setTotalDebtRemaining(debtRemaining);
     }
 
