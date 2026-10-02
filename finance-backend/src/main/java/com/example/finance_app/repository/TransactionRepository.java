@@ -32,6 +32,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("UPDATE Transaction t SET t.isDeleted = true WHERE t.id IN :ids AND t.userId.id = :userId")
     int softDeleteByIds(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 
+    // จำนวนรายการที่มาจากการถอนเงินออม (กันลบจากหน้าประวัติ)
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.id IN :ids AND t.savingsMovementId IS NOT NULL")
+    long countSavingsSpend(@Param("ids") List<Long> ids);
+
     // Get list Transaction
     @Query("SELECT t FROM Transaction t " +
             "JOIN FETCH t.categoryId c " +

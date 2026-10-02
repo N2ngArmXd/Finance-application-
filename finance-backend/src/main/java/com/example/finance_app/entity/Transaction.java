@@ -47,4 +47,9 @@ public class Transaction {
     @Column(name = "installment_period")
     private Integer installmentPeriod;
 
+    // รายจ่ายที่ระบบสร้างตอน "ถอนเงินออมไปใช้" ลิงก์กลับไปที่รายการถอน (null = บันทึกเอง)
+    // แก้ไข/ลบได้ที่หน้าเงินออมเท่านั้น
+    @Column(name = "savings_movement_id")
+    private Long savingsMovementId;
+
 }

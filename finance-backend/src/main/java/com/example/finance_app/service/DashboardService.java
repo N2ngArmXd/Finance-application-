@@ -1,7 +1,9 @@
 package com.example.finance_app.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
@@ -20,8 +22,10 @@ import com.example.finance_app.dto.response.DashboardSummaryResponse;
 import com.example.finance_app.dto.response.DashboardSummaryResponse.CategoryAmount;
 import com.example.finance_app.dto.response.DashboardSummaryResponse.InstallmentDue;
 import com.example.finance_app.entity.InstallmentsEntity;
+import com.example.finance_app.entity.SavingsMovement;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.repository.InstallmentsRepository;
+import com.example.finance_app.repository.SavingsMovementRepository;
 import com.example.finance_app.repository.TransactionRepository;
 
 @Service
@@ -31,6 +35,8 @@ public class DashboardService {
     private TransactionRepository transactionRepository;
     @Autowired
     private InstallmentsRepository installmentsRepository;
+    @Autowired
+    private SavingsMovementRepository savingsMovementRepository;
 
     public DashboardSummaryResponse getSummary(DashboardRequest req) {
         if (req.getUserId() == null) {
@@ -67,7 +73,53 @@ public class DashboardService {
         }
 
         fillInstallments(res, userId, month);
+        fillSavings(res, userId, month);
         return res;
+    }
+
+    // เงินออม + เงินใช้ได้ (ถอนไปใช้นับเป็นรายจ่ายแล้ว จึงบวกถอนทุกแบบกลับ ไม่ให้หักซ้ำ)
+    private void fillSavings(DashboardSummaryResponse res, Long userId, YearMonth month) {
+        LocalDateTime monthStart = month.atDay(1).atStartOfDay();
+        LocalDateTime nextMonthStart = month.plusMonths(1).atDay(1).atStartOfDay();
+
+        BigDecimal[] thisMonth = sumDepositWithdraw(
+                savingsMovementRepository.sumByTypeBetween(userId, monthStart, nextMonthStart));
+        BigDecimal net = thisMonth[0].subtract(thisMonth[1]);
+        res.setSavingsDepositThisMonth(thisMonth[0]);
+        res.setSavingsWithdrawThisMonth(thisMonth[1]);
+        res.setSavingsNetThisMonth(net);
+        if (res.getTotalIncome().signum() > 0) {
+            res.setSavingsRate(net.divide(res.getTotalIncome(), 4, RoundingMode.HALF_UP));
+        }
+
+        BigDecimal[] allTime = sumDepositWithdraw(savingsMovementRepository.sumByTypeBefore(userId, nextMonthStart));
+        res.setSavingsTotal(allTime[0].subtract(allTime[1]));
+
+        BigDecimal income = BigDecimal.ZERO;
+        BigDecimal expense = BigDecimal.ZERO;
+        for (Object[] row : transactionRepository.sumByType(userId, null, null, null,
+                null, month.atEndOfMonth().atTime(LocalTime.MAX))) {
+            if ("INCOME".equalsIgnoreCase((String) row[0])) {
+                income = income.add(toBigDecimal(row[1]));
+            } else if ("EXPENSE".equalsIgnoreCase((String) row[0])) {
+                expense = expense.add(toBigDecimal(row[1]));
+            }
+        }
+        res.setAvailableBalance(income.subtract(expense).subtract(allTime[0]).add(allTime[1]));
+    }
+
+    // [ฝาก, ถอน] จากผล query [type, sum]
+    private BigDecimal[] sumDepositWithdraw(List<Object[]> rows) {
+        BigDecimal deposit = BigDecimal.ZERO;
+        BigDecimal withdraw = BigDecimal.ZERO;
+        for (Object[] row : rows) {
+            if (SavingsMovement.DEPOSIT.equals(row[0])) {
+                deposit = deposit.add(toBigDecimal(row[1]));
+            } else if (SavingsMovement.WITHDRAW.equals(row[0])) {
+                withdraw = withdraw.add(toBigDecimal(row[1]));
+            }
+        }
+        return new BigDecimal[] { deposit, withdraw };
     }
 
     // ยอดรวม [รายรับ, รายจ่าย] ของเดือน — ใช้ query ตัวเดียวกับหน้าประวัติ

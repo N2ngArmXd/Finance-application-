@@ -82,7 +82,7 @@
 
 **API (เสนอ, POST + userId ใน body ตาม pattern เดิม)**
 - `/savings/list` → กระปุกทั้งหมด + `balance`, `depositedThisMonth`, `progress` (คำนวณฝั่ง backend)
-- `/savings/create` · `/savings/update` · `/savings/archive` · `/savings/delete`
+- `/savings/create` · `/savings/update` · `/savings/archive` (`withdrawAll`) · `/savings/reopen` · `/savings/delete`
 - `/savings/movements` → ประวัติฝาก-ถอนของกระปุก (แบ่งหน้า)
 - `/savings/deposit` · `/savings/withdraw` (`mode`: `TO_WALLET` | `SPEND`, + `categoryId` เมื่อ SPEND)
 - `/savings/movement/update` · `/savings/movement/delete`

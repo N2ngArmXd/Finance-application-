@@ -38,6 +38,15 @@ public class DashboardSummaryResponse {
     // ค่างวดคงเหลือทั้งหมดของรายการที่ยังไม่ปิดยอด
     private BigDecimal totalDebtRemaining = BigDecimal.ZERO;
 
+    // เงินออม — ฝาก/ถอนเป็นการย้ายเงิน ไม่อยู่ใน totalIncome/totalExpense
+    private BigDecimal savingsTotal = BigDecimal.ZERO; // ยอดในทุกกระปุก ณ สิ้นเดือนที่เลือก
+    private BigDecimal savingsDepositThisMonth = BigDecimal.ZERO;
+    private BigDecimal savingsWithdrawThisMonth = BigDecimal.ZERO;
+    private BigDecimal savingsNetThisMonth = BigDecimal.ZERO; // ฝาก − ถอน
+    private BigDecimal savingsRate; // ออมสุทธิ ÷ รายรับเดือนนี้ (null = ไม่มีรายรับ)
+    // เงินใช้ได้ ณ สิ้นเดือนที่เลือก = รายรับ − รายจ่าย − ฝาก + ถอน (สะสมทั้งหมด)
+    private BigDecimal availableBalance = BigDecimal.ZERO;
+
     @Data
     @NoArgsConstructor
     @AllArgsConstructor

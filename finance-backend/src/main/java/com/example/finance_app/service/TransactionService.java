@@ -3,7 +3,11 @@ package com.example.finance_app.service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -23,6 +27,7 @@ import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.CategoriesRepository;
+import com.example.finance_app.repository.SavingsMovementRepository;
 import com.example.finance_app.repository.TransactionRepository;
 import com.example.finance_app.repository.UsersRepository;
 
@@ -37,6 +42,8 @@ public class TransactionService {
     private TransactionRepository transactionRepository;
     @Autowired
     private CategoriesRepository categoriesRepository;
+    @Autowired
+    private SavingsMovementRepository savingsMovementRepository;
 
     public List<Transaction> getActiveTransactions() {
         Users user = usersRepository.findAll().stream().findFirst()
@@ -105,6 +112,69 @@ public class TransactionService {
         transactionRepository.softDeleteInstallmentPayments(installmentsId, periods);
     }
 
+    // สร้างรายจ่ายอัตโนมัติตอน "ถอนเงินออมไปใช้" — ลงวันที่ถอน และลิงก์กลับไปที่รายการถอน
+    public Transaction createSavingsSpend(Long userId, Long savingsMovementId, Long categoryId,
+            BigDecimal amount, LocalDateTime date, String description) {
+
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบผู้ใช้ดังกล่าว"));
+        Categories category = findExpenseCategory(categoryId);
+
+        Transaction transaction = new Transaction();
+        transaction.setId(generateUniqueTransactionId(category.getType(), date));
+        transaction.setUserId(user);
+        transaction.setCategoryId(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setTransactionDate(date);
+        transaction.setSavingsMovementId(savingsMovementId);
+
+        return transactionRepository.save(transaction);
+    }
+
+    // แก้รายจ่ายที่ผูกกับรายการถอนไปใช้ ให้ตรงกับรายการถอนที่ถูกแก้
+    public void updateSavingsSpend(Long transactionId, Long categoryId, BigDecimal amount,
+            LocalDateTime date, String description) {
+
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายจ่ายที่ผูกกับรายการถอน"));
+        if (categoryId != null) {
+            transaction.setCategoryId(findExpenseCategory(categoryId));
+        }
+        transaction.setAmount(amount);
+        transaction.setTransactionDate(date);
+        transaction.setDescription(description);
+        transactionRepository.save(transaction);
+    }
+
+    // ยกเลิกรายจ่ายของรายการถอนไปใช้ (soft delete)
+    public void cancelSavingsSpend(Long transactionId) {
+        transactionRepository.findById(transactionId).ifPresent(t -> {
+            t.setDeleted(true);
+            transactionRepository.save(t);
+        });
+    }
+
+    private Categories findExpenseCategory(Long categoryId) {
+        if (categoryId == null) {
+            throw new IllegalArgumentException("กรุณาเลือกหมวดหมู่รายจ่าย");
+        }
+        Categories category = categoriesRepository.findById(categoryId)
+                .filter(c -> !c.isDeleted())
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบหมวดหมู่ดังกล่าว"));
+        if (!"EXPENSE".equalsIgnoreCase(category.getType())) {
+            throw new IllegalArgumentException("ต้องเลือกหมวดหมู่ประเภทรายจ่าย");
+        }
+        return category;
+    }
+
+    // รายจ่ายจากเงินออมต้องจัดการที่หน้าเงินออม ไม่งั้นยอดในกระปุกจะไม่ตรงกับรายจ่าย
+    private void assertNotSavingsSpend(Transaction t) {
+        if (t.getSavingsMovementId() != null) {
+            throw new RuntimeException("รายการนี้มาจากการถอนเงินออม แก้ไขหรือลบได้ที่หน้าเงินออม");
+        }
+    }
+
     // id = [ประเภท 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
     // ประเภท: INCOME=1, EXPENSE=2
     private Long generateUniqueTransactionId(String categoryType, LocalDateTime date) {
@@ -129,6 +199,8 @@ public class TransactionService {
         Users user = usersRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
 
+        transactionRepository.findById(id).ifPresent(this::assertNotSavingsSpend);
+
         int result = transactionRepository.deleteTransactionById(id, user.getId());
 
         if (result == 0) {
@@ -148,6 +220,7 @@ public class TransactionService {
         if (existingTransaction.isDeleted()) {
             throw new RuntimeException("ไม่สามารถแก้ไขรายการที่ลบไปแล้ว");
         }
+        assertNotSavingsSpend(existingTransaction);
 
         existingTransaction.setUserId(updateData.getUserId());
         existingTransaction.setAmount(updateData.getAmount());
@@ -166,9 +239,33 @@ public class TransactionService {
 
         List<Transaction> transactions = transactionRepository.findAllActiveTransactionsByUserId(userId);
 
-        return transactions.stream()
+        List<TransactionListResponse> result = transactions.stream()
                 .map(this::toListResponse)
                 .collect(Collectors.toList());
+        fillSavingsGoalNames(result);
+        return result;
+    }
+
+    // เติมชื่อกระปุกให้รายจ่ายที่มาจากการถอนเงินออม (query เดียวต่อชุด)
+    private void fillSavingsGoalNames(List<TransactionListResponse> rows) {
+        Set<Long> movementIds = rows.stream()
+                .map(TransactionListResponse::getSavingsMovementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (movementIds.isEmpty()) {
+            return;
+        }
+        Map<Long, Object[]> byMovement = new HashMap<>();
+        for (Object[] row : savingsMovementRepository.findGoalNames(movementIds)) {
+            byMovement.put((Long) row[0], row);
+        }
+        for (TransactionListResponse r : rows) {
+            Object[] row = r.getSavingsMovementId() != null ? byMovement.get(r.getSavingsMovementId()) : null;
+            if (row != null) {
+                r.setSavingsGoalId((Long) row[1]);
+                r.setSavingsGoalName((String) row[2]);
+            }
+        }
     }
 
     // แปลง Transaction entity -> DTO (ใช้ร่วมกันหลายที่)
@@ -178,6 +275,7 @@ public class TransactionService {
         response.setAmount(t.getAmount());
         response.setDescription(t.getDescription());
         response.setTransactionDate(t.getTransactionDate());
+        response.setSavingsMovementId(t.getSavingsMovementId());
 
         if (t.getCategoryId() != null) {
             response.setCategoryId(t.getCategoryId().getId());
@@ -223,6 +321,7 @@ public class TransactionService {
         List<TransactionListResponse> content = result.getContent().stream()
                 .map(this::toListResponse)
                 .collect(Collectors.toList());
+        fillSavingsGoalNames(content);
 
         // ยอดสรุปแยกตามประเภท (คิดจากทั้งชุดที่ตรงเงื่อนไข ไม่ใช่แค่หน้านี้)
         BigDecimal totalIncome = BigDecimal.ZERO;
@@ -256,6 +355,9 @@ public class TransactionService {
         }
         if (ids == null || ids.isEmpty()) {
             throw new RuntimeException("ไม่พบรายการที่จะลบ");
+        }
+        if (transactionRepository.countSavingsSpend(ids) > 0) {
+            throw new RuntimeException("มีรายการที่มาจากการถอนเงินออม ลบได้ที่หน้าเงินออมเท่านั้น");
         }
         return transactionRepository.softDeleteByIds(ids, userId);
     }
