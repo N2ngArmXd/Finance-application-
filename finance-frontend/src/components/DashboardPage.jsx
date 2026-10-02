@@ -65,24 +65,24 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
     }, [userId, month]);
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
-            {/* หัวข้อ + เลือกเดือน */}
+        <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
+            {/* หัวข้อ + เลือกเดือน (มือถือ: ตัวเลือกเดือนเต็มความกว้างใต้หัวข้อ) */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-2xl font-black text-slate-800">ภาพรวมการเงิน</h1>
-                <div className="flex items-center gap-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-1">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-800">ภาพรวมการเงิน</h1>
+                <div className="w-full sm:w-auto flex items-center gap-1 bg-white rounded-2xl border border-slate-100 shadow-sm p-1">
                     <button
                         type="button"
                         onClick={() => setMonth(shiftMonth(month, -1))}
-                        className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
                         aria-label="เดือนก่อนหน้า"
                     >
                         <ChevronLeft size={18} />
                     </button>
-                    <span className="min-w-36 text-center font-bold text-slate-700">{monthLabel(month)}</span>
+                    <span className="flex-1 sm:flex-none sm:min-w-36 text-center font-bold text-slate-700">{monthLabel(month)}</span>
                     <button
                         type="button"
                         onClick={() => setMonth(shiftMonth(month, 1))}
-                        className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
+                        className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 transition-all"
                         aria-label="เดือนถัดไป"
                     >
                         <ChevronRight size={18} />
@@ -91,7 +91,7 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
                         <button
                             type="button"
                             onClick={() => setMonth(thisMonth)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold text-brand-600 hover:bg-brand-50 transition-all"
+                            className="h-10 px-3 rounded-xl text-xs font-bold text-brand-600 hover:bg-brand-50 transition-all"
                         >
                             เดือนนี้
                         </button>
@@ -102,9 +102,9 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
             {fetching && !data ? (
                 <div className="bg-white p-10 rounded-3xl border border-slate-100 text-center text-slate-500">กำลังโหลดข้อมูล...</div>
             ) : data && (
-                <div className={`space-y-6 transition-opacity ${fetching ? 'opacity-60' : ''}`}>
+                <div className={`space-y-4 sm:space-y-6 transition-opacity ${fetching ? 'opacity-60' : ''}`}>
                     <KpiRow data={data} />
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                         <ExpenseByCategory items={data.expenseByCategory} total={data.totalExpense} />
                         <InstallmentsDue data={data} onOpen={onOpenInstallment} />
                     </div>
@@ -129,7 +129,7 @@ function KpiRow({ data }) {
     const remaining = data.net - savingsNet;
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <KpiCard
                 label="รายรับเดือนนี้"
                 value={data.totalIncome}
@@ -184,16 +184,17 @@ function KpiCard({ label, value, icon, tone, change, goodWhenUp = false, sub, va
         );
     }
 
+    // มือถือแสดง 2×2 จึงย่อ padding / ขนาดตัวเลข
     return (
-        <div className="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-bold text-slate-500">{label}</span>
-                <span className={`p-2 rounded-xl ${TONES[tone]}`}>{icon}</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100 min-w-0">
+            <div className="flex items-start sm:items-center justify-between gap-2 mb-2 sm:mb-3">
+                <span className="text-xs sm:text-sm font-bold text-slate-500">{label}</span>
+                <span className={`shrink-0 p-1.5 sm:p-2 rounded-lg sm:rounded-xl [&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5 ${TONES[tone]}`}>{icon}</span>
             </div>
-            <div className={`text-2xl font-black ${valueClass}`}>
+            <div className={`text-lg sm:text-2xl font-black tabular-nums [overflow-wrap:anywhere] ${valueClass}`}>
                 {formatCurrency(value)}
             </div>
-            <div className="text-xs text-slate-400 mt-1">
+            <div className="text-[11px] sm:text-xs text-slate-400 mt-1">
                 {changeEl ? <>{changeEl} เทียบเดือนก่อน</> : (sub || 'ไม่มีข้อมูลเดือนก่อน')}
             </div>
         </div>
@@ -215,8 +216,8 @@ function ExpenseByCategory({ items, total }) {
     const max = rows.reduce((m, r) => Math.max(m, r.amount), 0);
 
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-            <h2 className="text-xl font-bold text-slate-700 mb-4">รายจ่ายแยกหมวด</h2>
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-700 mb-4">รายจ่ายแยกหมวด</h2>
             {rows.length === 0 ? (
                 <div className="text-center text-slate-400 py-8 border-2 border-dashed border-slate-100 rounded-2xl">
                     ยังไม่มีรายจ่ายในเดือนนี้
@@ -253,6 +254,21 @@ function ExpenseByCategory({ items, total }) {
 }
 
 
+// ลิงก์ไปหน้าเต็มที่มุมขวาของการ์ด — มือถือใช้คำสั้นเพื่อไม่ให้ชนหัวข้อ
+function SeeAllLink({ onClick, label }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="shrink-0 inline-flex items-center gap-1 h-10 -my-2 -mr-2 px-2 rounded-xl text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
+        >
+            <span className="sm:hidden">ดูทั้งหมด</span>
+            <span className="hidden sm:inline">{label}</span>
+            <ArrowRight size={16} />
+        </button>
+    );
+}
+
 const TOP_GOALS = 3;
 
 // เงินออม: ยอดรวม ณ สิ้นเดือนที่เลือก + ออมเดือนนี้ + กระปุก (ยอดปัจจุบัน) 3 ใบแรก
@@ -274,36 +290,30 @@ function SavingsOverview({ data, userId, onOpen }) {
     const net = data.savingsNetThisMonth || 0;
 
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
             <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-xl font-bold text-slate-700">เงินออม</h2>
-                <button
-                    type="button"
-                    onClick={() => onOpen()}
-                    className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
-                >
-                    ไปหน้าเงินออม <ArrowRight size={16} />
-                </button>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-700">เงินออม</h2>
+                <SeeAllLink onClick={() => onOpen()} label="ไปหน้าเงินออม" />
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     <div className="text-xs text-slate-500 mb-1">เงินออมรวม</div>
-                    <div className="font-black text-slate-700 text-lg">{formatCurrency(data.savingsTotal)}</div>
+                    <div className="font-black text-slate-700 text-base sm:text-lg tabular-nums [overflow-wrap:anywhere]">{formatCurrency(data.savingsTotal)}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     <div className="text-xs text-slate-500 mb-1">ออมสุทธิเดือนนี้</div>
-                    <div className={`font-black text-lg ${net < 0 ? 'text-expense-600' : 'text-brand-600'}`}>{formatCurrency(net)}</div>
+                    <div className={`font-black text-base sm:text-lg tabular-nums [overflow-wrap:anywhere] ${net < 0 ? 'text-expense-600' : 'text-brand-600'}`}>{formatCurrency(net)}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     <div className="text-xs text-slate-500 mb-1">อัตราการออม</div>
-                    <div className="font-black text-slate-700 text-lg">
+                    <div className="font-black text-slate-700 text-base sm:text-lg tabular-nums [overflow-wrap:anywhere]">
                         {data.savingsRate == null ? '-' : `${(data.savingsRate * 100).toFixed(0)}%`}
                     </div>
                 </div>
                 <div className={`p-3 rounded-2xl border ${data.availableBalance < 0 ? 'bg-expense-50 border-expense-100' : 'bg-slate-50 border-slate-100'}`}>
                     <div className="text-xs text-slate-500 mb-1">เงินใช้ได้ (สะสม)</div>
-                    <div className={`font-black text-lg ${data.availableBalance < 0 ? 'text-expense-600' : 'text-slate-700'}`}>{formatCurrency(data.availableBalance)}</div>
+                    <div className={`font-black text-base sm:text-lg tabular-nums [overflow-wrap:anywhere] ${data.availableBalance < 0 ? 'text-expense-600' : 'text-slate-700'}`}>{formatCurrency(data.availableBalance)}</div>
                 </div>
             </div>
 
@@ -377,29 +387,23 @@ function InstallmentsDue({ data, onOpen }) {
     const ratioHigh = ratio != null && ratio > DEBT_RATIO_WARN;
 
     return (
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-sm border border-slate-100">
             <div className="flex items-center justify-between gap-3 mb-4">
-                <h2 className="text-xl font-bold text-slate-700">ค่างวดที่ต้องจ่ายเดือนนี้</h2>
-                <button
-                    type="button"
-                    onClick={() => onOpen()}
-                    className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
-                >
-                    ไปหน้าตารางผ่อน <ArrowRight size={16} />
-                </button>
+                <h2 className="text-lg sm:text-xl font-bold text-slate-700">ค่างวดที่ต้องจ่ายเดือนนี้</h2>
+                <SeeAllLink onClick={() => onOpen()} label="ไปหน้าตารางผ่อน" />
             </div>
 
             <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                     <div className="text-xs text-slate-500 mb-1">ค่างวดคงเหลือทั้งหมด</div>
-                    <div className="font-black text-slate-700 text-lg">{formatCurrency(data.totalDebtRemaining)}</div>
+                    <div className="font-black text-slate-700 text-base sm:text-lg tabular-nums [overflow-wrap:anywhere]">{formatCurrency(data.totalDebtRemaining)}</div>
                 </div>
                 <div className={`p-3 rounded-2xl border ${ratioHigh ? 'bg-expense-50 border-expense-100' : 'bg-slate-50 border-slate-100'}`}>
                     <div className="text-xs text-slate-500 mb-1 flex items-center gap-1">
                         ค่างวด / รายรับ
                         {ratioHigh && <AlertTriangle size={12} className="text-expense-500" />}
                     </div>
-                    <div className={`font-black text-lg ${ratioHigh ? 'text-expense-600' : 'text-slate-700'}`}>
+                    <div className={`font-black text-base sm:text-lg tabular-nums [overflow-wrap:anywhere] ${ratioHigh ? 'text-expense-600' : 'text-slate-700'}`}>
                         {ratio == null ? '-' : `${(ratio * 100).toFixed(0)}%`}
                     </div>
                 </div>
@@ -429,10 +433,11 @@ function InstallmentsDue({ data, onOpen }) {
                             <div className="min-w-0">
                                 <div className="font-semibold text-slate-700 truncate">{row.installmentsName}</div>
                                 <div className="text-xs text-slate-500">
-                                    งวด {row.period}/{row.totalPeriods} · ครบกำหนด {formatDate(row.dueDate)}
+                                    งวด {row.period}/{row.totalPeriods} · ครบ {formatDate(row.dueDate)}
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3 shrink-0">
+                            {/* มือถือ: ยอดเงินซ้อนบนป้ายสถานะ ให้ชื่อรายการมีที่พอ */}
+                            <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-3 shrink-0">
                                 <span className="font-bold text-brand-600">{formatCurrency(row.amount)}</span>
                                 <DueStatus row={row} today={today} />
                             </div>

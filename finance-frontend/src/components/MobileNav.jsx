@@ -8,16 +8,17 @@ export function MobileHeader({ user, onLogout }) {
     return (
         <header className="lg:hidden sticky top-0 z-30 bg-brand-600 text-white pt-[env(safe-area-inset-top)]">
             <div className="h-14 flex items-center justify-between gap-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
-                <div className="flex flex-col leading-tight font-black text-sm">
+                <div className="shrink-0 flex flex-col leading-tight font-black text-sm whitespace-nowrap">
                     <span>FINANCE APPLICATION</span>
                     <span className="text-gold-400 text-[11px] tracking-widest">MANAGEMENT</span>
                 </div>
+                {/* ชื่อผู้ใช้ยาวให้ย่อด้วย … แทนการดันชื่อแอปให้ขึ้นบรรทัดใหม่ */}
                 <div className="flex items-center gap-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                         <div className="shrink-0 w-7 h-7 rounded-full bg-gold-400 text-brand-700 flex items-center justify-center">
                             <User size={16} />
                         </div>
-                        <span className="font-bold text-sm truncate max-w-[110px]">{user?.username}</span>
+                        <span className="font-bold text-sm truncate max-w-[160px]">{user?.username}</span>
                     </div>
                     <button
                         onClick={onLogout}
@@ -40,7 +41,8 @@ export function BottomNav({ activePage, setActivePage }) {
             className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white border-t border-slate-200 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.15)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
         >
             <ul className="h-16 grid grid-cols-5 max-w-xl mx-auto">
-                {navItems.map(({ id, Icon, shortLabel }) => {
+                {navItems.map((item) => {
+                    const { id, Icon, shortLabel } = item;
                     const active = activePage === id;
                     return (
                         <li key={id}>
