@@ -4,7 +4,7 @@ import { showSuccess, showError, showConfirm } from '../utils/swr';
 
 const PAGE_SIZE = 10;
 
-export default function Installments({ userId }) {
+export default function Installments({ userId, focusId, onFocusHandled }) {
     const [loading, setLoading] = useState(false);
     const [installmentsList, setInstallmentsList] = useState([]);
     const [fetching, setFetching] = useState(true);
@@ -115,6 +115,7 @@ export default function Installments({ userId }) {
             fetchInstallments();
         }
     }, [userId]);
+
 
     // Calculate preview when form data changes
     useEffect(() => {
@@ -358,10 +359,12 @@ export default function Installments({ userId }) {
         let totalPaid = 0;
         let thisMonthDue = 0;
         let nextMonthDue = 0;
+        let overdueDue = 0;
 
         const now = new Date();
         const curMonth = now.getMonth();
         const curYear = now.getFullYear();
+        const curMonthStart = new Date(curYear, curMonth, 1);
 
         // เดือนถัดไป (ข้ามปีอัตโนมัติเมื่อเป็นเดือนธันวาคม)
         const nextMonthDate = new Date(curYear, curMonth + 1, 1);
@@ -394,6 +397,10 @@ export default function Installments({ userId }) {
                 ) {
                     thisMonthDue += monthly;
                 }
+                // งวดค้างชำระ: ครบกำหนดก่อนเดือนนี้แต่ยังไม่จ่าย
+                if (payDate < curMonthStart && !paidSet.has(i)) {
+                    overdueDue += monthly;
+                }
                 // งวดที่ครบกำหนดในเดือนหน้าและยังไม่ได้จ่าย
                 if (
                     payDate.getMonth() === nextMonth &&
@@ -410,7 +417,8 @@ export default function Installments({ userId }) {
             totalPaid,
             totalRemaining: Math.max(totalPayable - totalPaid, 0),
             thisMonthDue,
-            nextMonthDue
+            nextMonthDue,
+            overdueDue
         };
     };
 
@@ -444,7 +452,9 @@ export default function Installments({ userId }) {
             });
 
             if (response.ok) {
-                showSuccess('บันทึกแล้ว!', markingPaid ? `บันทึกการจ่ายงวดที่ ${row.month} เรียบร้อย` : `ยกเลิกสถานะจ่ายงวดที่ ${row.month} แล้ว`);
+                showSuccess('บันทึกแล้ว!', markingPaid
+                    ? `บันทึกการจ่ายงวดที่ ${row.month} และเพิ่มรายจ่ายในประวัติธุรกรรมแล้ว`
+                    : `ยกเลิกสถานะจ่ายงวดที่ ${row.month} และลบรายจ่ายของงวดนี้แล้ว`);
                 await fetchInstallments();
             } else {
                 const errorText = await response.text();
@@ -563,6 +573,26 @@ export default function Installments({ userId }) {
     const totalPages = Math.max(1, Math.ceil(activeInstallments.length / PAGE_SIZE));
     const safePage = Math.min(currentPage, totalPages);
     const pagedInstallments = activeInstallments.slice((safePage - 1) * PAGE_SIZE, (safePage - 1) * PAGE_SIZE + PAGE_SIZE);
+
+    // เปิดรายการที่ถูกส่งมาจากหน้าอื่น (เช่น กดจาก dashboard) — ไปหน้าที่มีรายการนั้น กางออก แล้วเลื่อนไปหา
+    useEffect(() => {
+        if (fetching || focusId == null) return;
+        const target = installmentsList.find((item) => item.installmentsId === focusId);
+        if (target) {
+            if (isInstallmentCompleted(target)) {
+                setShowCompleted(true);
+            } else {
+                const index = activeInstallments.findIndex((item) => item.installmentsId === focusId);
+                setCurrentPage(Math.floor(index / PAGE_SIZE) + 1);
+                setExpandedId(focusId);
+            }
+            requestAnimationFrame(() => {
+                document.getElementById(`installment-${focusId}`)
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
+        onFocusHandled?.();
+    }, [fetching, focusId]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-6">
@@ -826,6 +856,11 @@ export default function Installments({ userId }) {
                             <div className="bg-warn-50 p-4 rounded-2xl border border-warn-100 text-center">
                                 <div className="text-xs text-warn-600 mb-1">ต้องจ่ายเดือนนี้</div>
                                 <div className="font-black text-warn-600 text-2xl">{formatCurrency(summary.thisMonthDue)}</div>
+                                {summary.overdueDue > 0 && (
+                                    <div className="text-xs font-bold text-expense-600 mt-1">
+                                        + ค้างชำระ {formatCurrency(summary.overdueDue)}
+                                    </div>
+                                )}
                             </div>
                             <div className="bg-brand-50 p-4 rounded-2xl border border-brand-100 text-center">
                                 <div className="text-xs text-brand-600 mb-1">ต้องจ่ายเดือนหน้า</div>
@@ -883,7 +918,7 @@ export default function Installments({ userId }) {
                                         : 'border-warn-400 bg-warn-50/30';
 
                                     return (
-                                        <div key={item.installmentsId} className={`border-2 ${statusBorder} rounded-2xl overflow-hidden hover:shadow-md transition-shadow`}>
+                                        <div key={item.installmentsId} id={`installment-${item.installmentsId}`} className={`scroll-mt-6 border-2 ${statusBorder} rounded-2xl overflow-hidden hover:shadow-md transition-shadow`}>
                                             <div
                                                 className="p-4 cursor-pointer bg-white"
                                                 onClick={() => setExpandedId(isExpanded ? null : item.installmentsId)}
@@ -1127,7 +1162,7 @@ export default function Installments({ userId }) {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {completedInstallments.map((item) => (
-                                        <tr key={item.installmentsId} className="hover:bg-income-50/40">
+                                        <tr key={item.installmentsId} id={`installment-${item.installmentsId}`} className="scroll-mt-6 hover:bg-income-50/40">
                                             <td className="px-4 py-3 font-semibold text-slate-700">
                                                 {item.installmentsName}
                                                 {item.status === 'CLOSED' ? (

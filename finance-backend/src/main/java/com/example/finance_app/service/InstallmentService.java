@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.ThreadLocalRandom;
@@ -23,6 +24,8 @@ public class InstallmentService {
 
     @Autowired
     private InstallmentsRepository installmentsRepository;
+    @Autowired
+    private TransactionService transactionService;
 
     @Transactional
     public InstallmentsEntity createdInstallments(InstallmentsRequest request) {
@@ -190,6 +193,7 @@ public class InstallmentService {
 
         // ตัดงวดที่จ่ายเกินช่วงใหม่ออกอัตโนมัติ (เช่น ลดจาก 10 เหลือ 6 งวด -> เก็บแค่ 1..6)
         TreeSet<Integer> periods = new TreeSet<>();
+        List<Integer> removedPeriods = new ArrayList<>();
         if (item.getPaidPeriods() != null && !item.getPaidPeriods().isBlank()) {
             for (String part : item.getPaidPeriods().split(",")) {
                 String trimmed = part.trim();
@@ -197,10 +201,14 @@ public class InstallmentService {
                     int p = Integer.parseInt(trimmed);
                     if (p >= 1 && p <= months) {
                         periods.add(p);
+                    } else {
+                        removedPeriods.add(p);
                     }
                 }
             }
         }
+        // งวดที่ถูกตัดออก ให้ยกเลิกรายจ่ายค่างวดของงวดนั้นด้วย
+        transactionService.cancelInstallmentPayments(item.getInstallmentsId(), removedPeriods);
         String joined = periods.stream().map(String::valueOf).collect(Collectors.joining(","));
         item.setPaidPeriods(joined.isEmpty() ? null : joined);
 
@@ -245,10 +253,13 @@ public class InstallmentService {
             }
         }
 
-        if (paid) {
-            periods.add(period);
-        } else {
-            periods.remove(period);
+        // จ่ายงวด = สร้างรายจ่ายลงวันที่กดจ่าย, ยกเลิก = ลบรายจ่ายนั้นทิ้ง (เช็คสถานะเดิมกันสร้างซ้ำ)
+        if (paid && periods.add(period)) {
+            transactionService.createInstallmentPayment(item.getUserId(), installmentsId, period,
+                    item.getMonthlyAmount(),
+                    "ค่างวด " + item.getInstallmentsName() + " งวดที่ " + period + "/" + item.getInstallmentMonths());
+        } else if (!paid && periods.remove(period)) {
+            transactionService.cancelInstallmentPayments(installmentsId, List.of(period));
         }
 
         String joined = periods.stream().map(String::valueOf).collect(Collectors.joining(","));

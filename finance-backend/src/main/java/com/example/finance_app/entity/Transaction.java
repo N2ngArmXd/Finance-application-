@@ -40,4 +40,11 @@ public class Transaction {
     @JoinColumn(name = "category_id")
     private Categories categoryId;
 
+    // รายจ่ายที่ระบบสร้างตอนกดจ่ายงวดผ่อน จะลิงก์กลับไปที่รายการผ่อน + งวด (null = บันทึกเอง)
+    @Column(name = "installments_id")
+    private Long installmentsId;
+
+    @Column(name = "installment_period")
+    private Integer installmentPeriod;
+
 }

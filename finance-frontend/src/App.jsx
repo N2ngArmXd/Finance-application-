@@ -5,12 +5,20 @@ import RegisterForm from './components/RegisterForm';
 import TransactionPage from './components/TransactionPage';
 import HistoryPage from './components/HIstoryPage';
 import Installments from './components/Installments';
+import DashboardPage from './components/DashboardPage';
 
 function App() {
   const [user, setUser] = useState(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState('dashboard');
+  // รายการผ่อนที่ต้องเปิดให้ทันทีเมื่อกดมาจากหน้าอื่น (เช่น dashboard)
+  const [installmentFocusId, setInstallmentFocusId] = useState(null);
+
+  const openInstallment = (installmentsId = null) => {
+    setInstallmentFocusId(installmentsId);
+    setActivePage('installment');
+  };
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
@@ -51,10 +59,7 @@ function App() {
         {/* Content Section */}
         <main className="p-8">
           {activePage === 'dashboard' && (
-            <div className="bg-white p-10 rounded-3xl border border-dashed border-slate-200 text-center text-slate-400">
-              <h2 className="text-xl font-bold">ยินดีต้อนรับสู่ Dashboard</h2>
-              <p>ขณะนี้ยังไม่มีข้อมูลการแสดงผล</p>
-            </div>
+            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} />
           )}
 
           {activePage === 'transaction' && (
@@ -64,7 +69,11 @@ function App() {
             <HistoryPage userId={user.id} />
           )}
           {activePage === 'installment' && (
-            <Installments userId={user.id} />
+            <Installments
+              userId={user.id}
+              focusId={installmentFocusId}
+              onFocusHandled={() => setInstallmentFocusId(null)}
+            />
           )}
         </main>
       </div>

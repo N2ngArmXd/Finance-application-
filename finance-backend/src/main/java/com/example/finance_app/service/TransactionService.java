@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import com.example.finance_app.config.DefaultCategoryInitializer;
 import com.example.finance_app.dto.request.TransactionRequest;
 import com.example.finance_app.dto.request.TransactionSearchRequest;
 import com.example.finance_app.dto.response.TransactionListResponse;
@@ -69,6 +70,39 @@ public class TransactionService {
         transaction.setId(generateUniqueTransactionId(category.getType(), txnDate));
 
         return transactionRepository.save(transaction);
+    }
+
+    // สร้างรายจ่ายค่างวดอัตโนมัติตอนกดจ่ายงวดผ่อน — ลงวันที่ที่กดจ่ายจริง
+    public Transaction createInstallmentPayment(Long userId, Long installmentsId, int period,
+            BigDecimal amount, String description) {
+
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
+
+        Categories category = categoriesRepository
+                .findActiveByNameAndType(DefaultCategoryInitializer.INSTALLMENT_CATEGORY_NAME, "EXPENSE")
+                .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่ค่างวด-ผ่อนชำระ"));
+
+        LocalDateTime now = LocalDateTime.now();
+        Transaction transaction = new Transaction();
+        transaction.setId(generateUniqueTransactionId(category.getType(), now));
+        transaction.setUserId(user);
+        transaction.setCategoryId(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setTransactionDate(now);
+        transaction.setInstallmentsId(installmentsId);
+        transaction.setInstallmentPeriod(period);
+
+        return transactionRepository.save(transaction);
+    }
+
+    // ยกเลิกรายจ่ายค่างวดของงวดที่ระบุ (soft delete)
+    public void cancelInstallmentPayments(Long installmentsId, List<Integer> periods) {
+        if (periods.isEmpty()) {
+            return;
+        }
+        transactionRepository.softDeleteInstallmentPayments(installmentsId, periods);
     }
 
     // id = [ประเภท 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
