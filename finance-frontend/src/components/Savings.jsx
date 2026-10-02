@@ -296,11 +296,11 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4">
             <div className="flex items-center justify-between gap-4 mb-2">
-                <h1 className="text-2xl font-bold text-slate-800">เงินออม</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">เงินออม</h1>
                 <button
                     type="button"
                     onClick={openCreate}
-                    className="h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
+                    className="shrink-0 h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
                 >
                     <Plus size={18} /> สร้างกระปุก
                 </button>
@@ -325,26 +325,27 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
                 <>
                     {/* สรุป */}
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                        <div className="p-6 flex flex-col gap-0.5">
+                        <div className="p-4 sm:p-6 flex flex-col gap-0.5">
                             <span className="text-sm font-semibold text-slate-600">เงินออมรวม · {activeGoals.length} กระปุก</span>
-                            <span className="text-[44px] leading-[52px] font-bold tracking-tight text-slate-900 tabular-nums">{money(totalSaved)}</span>
+                            <span className="text-[36px] leading-[44px] sm:text-[44px] sm:leading-[52px] font-bold tracking-tight text-slate-900 tabular-nums [overflow-wrap:anywhere]">{money(totalSaved)}</span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-4 border-t border-slate-100">
+                        {/* มือถือ: 2 คอลัมน์ ช่องที่ 3 เต็มแถว */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 px-4 sm:px-6 py-4 border-t border-slate-100 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
                             <div className="flex flex-col gap-0.5">
                                 <span className="text-xs text-slate-600">ออมสุทธิเดือนนี้</span>
-                                <span className={`text-xl font-bold tabular-nums ${netThisMonth < 0 ? 'text-expense-600' : 'text-brand-600'}`}>
+                                <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${netThisMonth < 0 ? 'text-expense-600' : 'text-brand-600'}`}>
                                     {netThisMonth < 0 ? '−' : '+'}{money(Math.abs(netThisMonth))}
                                 </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
                                 <span className="text-xs text-slate-600">อัตราการออม (ของรายรับเดือนนี้)</span>
-                                <span className="text-xl font-bold tabular-nums text-slate-800">
+                                <span className="text-lg sm:text-xl font-bold tabular-nums text-slate-800">
                                     {summary?.savingsRate != null ? `${(summary.savingsRate * 100).toFixed(1)}%` : '—'}
                                 </span>
                             </div>
                             <div className="flex flex-col gap-0.5">
                                 <span className="text-xs text-slate-600">เงินใช้ได้ (หลังหักเงินออม)</span>
-                                <span className={`text-xl font-bold tabular-nums ${summary?.availableBalance < 0 ? 'text-expense-600' : 'text-slate-800'}`}>
+                                <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${summary?.availableBalance < 0 ? 'text-expense-600' : 'text-slate-800'}`}>
                                     {summary ? money(summary.availableBalance) : '—'}
                                 </span>
                             </div>
@@ -396,7 +397,7 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
                                 <div
                                     key={g.savingsGoalId}
                                     id={`goal-${g.savingsGoalId}`}
-                                    className={`scroll-mt-6 min-h-16 py-2 pl-5 pr-3 flex items-center gap-3 border-t border-slate-100 ${highlightId === g.savingsGoalId ? 'bg-gold-50' : ''}`}
+                                    className={`scroll-mt-20 lg:scroll-mt-6 min-h-16 py-2 pl-4 sm:pl-5 pr-2 sm:pr-3 flex items-center gap-2 sm:gap-3 border-t border-slate-100 ${highlightId === g.savingsGoalId ? 'bg-gold-50' : ''}`}
                                 >
                                     <GoalAvatar icon={g.icon} color={g.color} size={36} />
                                     <div className="flex-1 min-w-0 flex flex-col">
@@ -406,13 +407,13 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
                                             {g.archivedAt ? `ปิดเมื่อ ${formatShortDate(new Date(g.archivedAt))}` : 'ปิดแล้ว'}
                                         </span>
                                     </div>
-                                    <button type="button" onClick={() => setDetailId(g.savingsGoalId)} className="h-9 px-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                                    <button type="button" onClick={() => setDetailId(g.savingsGoalId)} className="shrink-0 h-10 sm:h-9 px-2.5 sm:px-3 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100">
                                         ประวัติ
                                     </button>
-                                    <button type="button" onClick={() => reopenGoal(g)} className="h-9 px-3 rounded-xl text-sm font-semibold text-brand-600 hover:bg-brand-50 flex items-center gap-1.5">
-                                        <ArchiveRestore size={16} /> เปิดใช้อีกครั้ง
+                                    <button type="button" onClick={() => reopenGoal(g)} aria-label="เปิดใช้อีกครั้ง" className="shrink-0 h-10 sm:h-9 px-2.5 sm:px-3 rounded-xl text-sm font-semibold text-brand-600 hover:bg-brand-50 flex items-center gap-1.5">
+                                        <ArchiveRestore size={16} /> <span className="hidden sm:inline">เปิดใช้อีกครั้ง</span>
                                     </button>
-                                    <button type="button" onClick={() => askDeleteGoal(g)} aria-label="ลบ" className="w-10 h-10 rounded-xl flex items-center justify-center text-expense-700 hover:bg-expense-50">
+                                    <button type="button" onClick={() => askDeleteGoal(g)} aria-label="ลบ" className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-expense-700 hover:bg-expense-50">
                                         <Trash2 size={18} />
                                     </button>
                                 </div>

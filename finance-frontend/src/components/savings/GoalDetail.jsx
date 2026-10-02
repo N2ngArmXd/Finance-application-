@@ -56,15 +56,15 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
     return (
         <>
             <div onClick={onClose} className="fixed inset-0 z-40 bg-slate-900/30 animate-fade-in" />
-            <aside role="dialog" aria-modal="true" aria-label="รายละเอียดกระปุก" className="fixed top-0 right-0 bottom-0 z-40 w-[440px] max-w-full bg-white flex flex-col shadow-[-24px_0_48px_-16px_rgba(15,23,42,0.3)] animate-drawer-in">
-                <div className="h-16 shrink-0 flex items-center justify-between pl-6 pr-3 border-b border-slate-100">
+            <aside role="dialog" aria-modal="true" aria-label="รายละเอียดกระปุก" className="fixed top-0 right-0 bottom-0 z-40 w-[440px] max-w-full bg-white flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-[-24px_0_48px_-16px_rgba(15,23,42,0.3)] animate-drawer-in">
+                <div className="h-16 shrink-0 flex items-center justify-between pl-4 sm:pl-6 pr-3 border-b border-slate-100">
                     <span className="text-[17px] font-semibold text-slate-800">รายละเอียดกระปุก</span>
                     <button onClick={onClose} aria-label="ปิด" className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="shrink-0 px-6 py-5 border-b border-slate-100 flex flex-col gap-3">
+                <div className="shrink-0 px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex flex-col gap-3">
                     <div className="flex items-center gap-3.5">
                         <GoalAvatar icon={goal.icon} color={goal.color} size={48} />
                         <div className="flex-1 min-w-0 flex flex-col">
@@ -89,7 +89,7 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
-                    <div className="h-10 px-6 flex items-center gap-1.5 bg-slate-50 border-b border-slate-100 text-[13px] font-semibold text-slate-600">
+                    <div className="h-10 px-4 sm:px-6 flex items-center gap-1.5 bg-slate-50 border-b border-slate-100 text-[13px] font-semibold text-slate-600">
                         <History size={14} /> ประวัติฝาก-ถอน
                     </div>
 
@@ -119,7 +119,7 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
                             {items.map((m) => {
                                 const mode = MODE[m.mode] || MODE.DEPOSIT;
                                 return (
-                                    <div key={m.savingsMovementId} className="group min-h-16 px-6 py-2.5 flex items-center gap-3 border-b border-slate-100">
+                                    <div key={m.savingsMovementId} className="group min-h-16 pl-4 pr-2 sm:px-6 py-2.5 flex items-center gap-3 border-b border-slate-100">
                                         {m.mode === 'SPEND' ? (
                                             <CategoryAvatar name={m.categoryIcon} size={36} />
                                         ) : (
@@ -137,10 +137,10 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
                                         </div>
                                         <span className={`shrink-0 text-[15px] font-semibold tabular-nums ${mode.amount}`}>{mode.sign}{formatMoney(m.amount)}</span>
                                         <div className="shrink-0 flex opacity-60 group-hover:opacity-100 transition-opacity">
-                                            <button onClick={() => onEditMovement(m)} aria-label="แก้ไขรายการ" className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100">
+                                            <button onClick={() => onEditMovement(m)} aria-label="แก้ไขรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100">
                                                 <Pencil size={15} />
                                             </button>
-                                            <button onClick={() => onDeleteMovement(m)} aria-label="ลบรายการ" className="w-8 h-8 rounded-lg flex items-center justify-center text-expense-700 hover:bg-expense-50">
+                                            <button onClick={() => onDeleteMovement(m)} aria-label="ลบรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-expense-700 hover:bg-expense-50">
                                                 <Trash2 size={15} />
                                             </button>
                                         </div>
@@ -160,7 +160,7 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
                     )}
                 </div>
 
-                <div className="shrink-0 grid grid-cols-2 gap-3 px-6 py-4 border-t border-slate-200">
+                <div className="shrink-0 grid grid-cols-2 gap-3 px-4 sm:px-6 py-4 border-t border-slate-200">
                     <button
                         onClick={onWithdraw}
                         disabled={!(goal.balance > 0)}

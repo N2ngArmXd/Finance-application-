@@ -7,7 +7,7 @@ import GoalAvatar from './GoalAvatar';
 
 const money = (n) => `฿${formatMoney(n)}`;
 
-const inputBase = 'h-12 px-3.5 rounded-xl border bg-slate-50 text-[15px] text-slate-800 outline-none transition-colors focus:bg-white focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10';
+const inputBase = 'h-12 px-3.5 rounded-xl border bg-slate-50 text-base sm:text-[15px] text-slate-800 outline-none transition-colors focus:bg-white focus:border-brand-500 focus:ring-[3px] focus:ring-brand-500/10';
 
 const FieldError = ({ text }) => (
     <span className="flex items-center gap-1.5 px-1 text-[13px] leading-[18px] font-medium text-expense-700">
@@ -59,23 +59,23 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-start md:items-center justify-center p-4 overflow-y-auto animate-fade-in" onClick={onCancel}>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-start md:items-center justify-center sm:p-4 overflow-y-auto animate-fade-in" onClick={onCancel}>
             <form
                 onSubmit={submit}
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
-                className="w-[840px] max-w-full my-4 bg-white rounded-3xl shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden animate-zoom-in"
+                className="w-[840px] max-w-full h-dvh sm:h-auto sm:my-4 bg-white sm:rounded-3xl shadow-[0_24px_64px_-16px_rgba(15,23,42,0.35)] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] sm:pt-0 sm:pb-0 animate-zoom-in"
             >
-                <div className="h-16 shrink-0 flex items-center justify-between pl-6 pr-3 border-b border-slate-100">
+                <div className="h-14 sm:h-16 shrink-0 flex items-center justify-between pl-4 sm:pl-6 pr-2 sm:pr-3 border-b border-slate-100">
                     <span className="text-[17px] font-semibold text-slate-800">{isEdit ? 'แก้ไขกระปุก' : 'สร้างกระปุกใหม่'}</span>
                     <button type="button" onClick={onCancel} aria-label="ปิด" className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:bg-slate-100">
                         <X size={20} />
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] max-h-[calc(92vh-144px)] overflow-y-auto">
-                    <div className="px-6 pt-5 pb-6 flex flex-col gap-[18px]">
+                <div className="flex-1 min-h-0 sm:flex-none grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] sm:max-h-[calc(92vh-144px)] overflow-y-auto">
+                    <div className="px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-[18px]">
                         <label className="flex flex-col gap-2">
                             <span className="text-sm font-semibold text-slate-700">ชื่อกระปุก <span className="text-expense-600">*</span></span>
                             <input
@@ -119,7 +119,7 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
                             )}
                         </div>
 
-                        <div className={`grid gap-3 ${isEdit ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                        <div className={`grid gap-3 grid-cols-1 ${isEdit ? '' : 'sm:grid-cols-2'}`}>
                             {form.hasTarget && (
                                 <div className="flex flex-col gap-2">
                                     <span className="text-sm font-semibold text-slate-700">อยากถึงเป้าภายใน <span className="font-normal text-slate-500">(ไม่บังคับ)</span></span>
@@ -215,7 +215,7 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
                     </div>
 
                     {/* preview การ์ด */}
-                    <div className="bg-slate-50 lg:border-l border-slate-100 px-6 pt-5 pb-6 flex flex-col gap-3">
+                    <div className="bg-slate-50 lg:border-l border-slate-100 px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-3">
                         <span className="text-[13px] font-semibold text-slate-600">ตัวอย่าง</span>
                         <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3.5 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                             <div className="flex items-center gap-3 min-w-0">
@@ -246,12 +246,12 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
                     </div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-3 px-6 py-4 border-t border-slate-200">
-                    <span className="flex-1 text-[13px] text-slate-500"><span className="text-expense-600">*</span> จำเป็นต้องกรอก</span>
-                    <button type="button" onClick={onCancel} className="w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50">
+                <div className="shrink-0 flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200">
+                    <span className="hidden sm:block flex-1 text-[13px] text-slate-500"><span className="text-expense-600">*</span> จำเป็นต้องกรอก</span>
+                    <button type="button" onClick={onCancel} className="w-24 sm:w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50">
                         ยกเลิก
                     </button>
-                    <button type="submit" className="w-[200px] h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2">
+                    <button type="submit" className="flex-1 sm:flex-none sm:w-[200px] h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2">
                         <Save size={18} /> {isEdit ? 'บันทึกการแก้ไข' : 'สร้างกระปุก'}
                     </button>
                 </div>
