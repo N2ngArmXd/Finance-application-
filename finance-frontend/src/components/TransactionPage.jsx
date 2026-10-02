@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { showConfirm } from '../utils/swr';
-import { formatMoney, formatSigned, toDateInput, formatDayLabel } from '../utils/format';
+import { formatMoney, formatSigned, toDateInput, formatDayLabel, txnTone } from '../utils/format';
 import { Loader2, ArrowRight, NotebookPen } from 'lucide-react';
 import TxnForm from './TxnForm';
 import TxnRow from './TxnRow';
@@ -73,7 +73,8 @@ export default function TransactionPage({ userId, onNavigate }) {
     const todayNet = useMemo(
         () =>
             todayItems.reduce(
-                (sum, t) => sum + (t.categoryType === 'INCOME' ? Number(t.amount) : -Number(t.amount)),
+                // ฝากเงินออมหักออก / ถอนเงินออมบวกกลับ เหมือนสุทธิในหน้าประวัติ
+                (sum, t) => sum + (txnTone(t.categoryType).sign === '+' ? Number(t.amount) : -Number(t.amount)),
                 0
             ),
         [todayItems]

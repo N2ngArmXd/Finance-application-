@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Search, X, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
-    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown,
+    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank,
 } from 'lucide-react';
-import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime } from '../utils/format';
+import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime, txnTone, isSavingType } from '../utils/format';
 import { CategoryAvatar } from '../utils/categoryIcons';
 import TxnForm from './TxnForm';
 import TxnRow from './TxnRow';
@@ -33,6 +33,11 @@ const datePresets = () => {
     ];
 };
 
+// ออมสุทธิ (ฝาก − ถอนเงินออม) จากผล search
+const savingNet = (d) => (Number(d.totalSavingIn) || 0) - (Number(d.totalSavingOut) || 0);
+
+const TYPE_LABELS = { INCOME: 'รายรับ', EXPENSE: 'รายจ่าย', SAVING: 'เงินออม' };
+
 // [วันนี้, เมื่อวาน] เป็น YYYY-MM-DD ใช้ทำป้ายหัวกลุ่มวัน
 const relativeDayKeys = () => [toDateInput(new Date()), toDateInput(new Date(Date.now() - 86400000))];
 
@@ -42,7 +47,7 @@ const presetChip = (on) =>
         : 'bg-white text-slate-700 font-medium ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
     }`;
 
-const HistoryPage = ({ userId, onNavigate }) => {
+const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
@@ -54,6 +59,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
         totalPages: 1,
         totalIncome: 0,
         totalExpense: 0,
+        totalSaving: 0, // ฝาก − ถอนเงินออม (ไม่ใช่รายรับ/รายจ่าย แต่หักออกจากสุทธิ)
     });
     // ยอดสุทธิของแต่ละวันที่อยู่ในหน้านี้ (นับทุกหน้า ตามตัวกรองเดียวกัน) { 'YYYY-MM-DD': net }
     const [dayTotals, setDayTotals] = useState({});
@@ -163,6 +169,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
                     totalPages: data.totalPages || 1,
                     totalIncome: Number(data.totalIncome) || 0,
                     totalExpense: Number(data.totalExpense) || 0,
+                    totalSaving: savingNet(data),
                 });
 
                 // ยอดสุทธิรายวัน: ถามยอดรวมของแต่ละวันในหน้านี้ (ตัวกรองเดียวกัน) เพื่อให้นับครบแม้วันถูกแบ่งข้ามหน้า
@@ -173,7 +180,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
                             const res = await searchApi({ ...baseQuery, dateFrom: day, dateTo: day, page: 1, size: 1 });
                             if (!res.ok) return [day, null];
                             const d = await res.json();
-                            return [day, (Number(d.totalIncome) || 0) - (Number(d.totalExpense) || 0)];
+                            return [day, (Number(d.totalIncome) || 0) - (Number(d.totalExpense) || 0) - savingNet(d)];
                         } catch {
                             return [day, null];
                         }
@@ -317,9 +324,9 @@ const HistoryPage = ({ userId, onNavigate }) => {
         setShowCustomDate(false);
     };
 
-    const { content, totalElements, totalPages, totalIncome, totalExpense } = pageData;
+    const { content, totalElements, totalPages, totalIncome, totalExpense, totalSaving } = pageData;
     const safePage = Math.min(currentPage, Math.max(1, totalPages));
-    const netAmount = totalIncome - totalExpense;
+    const netAmount = totalIncome - totalExpense - totalSaving;
     const incomePct = totalIncome + totalExpense > 0 ? Math.round((totalIncome / (totalIncome + totalExpense)) * 100) : 50;
     const groupByDay = sortConfig.key === 'transactionDate';
 
@@ -329,7 +336,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
         ? activePreset.label
         : `${filterStart ? formatDayLabel(filterStart) : 'เริ่มต้น'} – ${filterEnd ? formatDayLabel(filterEnd) : 'ปัจจุบัน'}`;
     const chips = [
-        filterType !== 'ALL' && { key: 'type', label: filterType === 'INCOME' ? 'รายรับ' : 'รายจ่าย', remove: () => { resetToFirstPage(); setFilterType('ALL'); } },
+        filterType !== 'ALL' && { key: 'type', label: TYPE_LABELS[filterType], remove: () => { resetToFirstPage(); setFilterType('ALL'); } },
         filterCategory !== 'ALL' && { key: 'cat', label: categoryName || 'หมวดหมู่', remove: () => { resetToFirstPage(); setFilterCategory('ALL'); } },
         hasDateFilter && { key: 'date', label: dateChipLabel, remove: () => { setDateRange('', ''); setShowCustomDate(false); } },
     ].filter(Boolean);
@@ -360,6 +367,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
         .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1);
 
     const editingItem = editing?.item;
+    const editingFromSavings = editingItem?.savingsMovementId != null;
 
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4 animate-zoom-in">
@@ -429,6 +437,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
                             { v: 'ALL', label: 'ทั้งหมด', tone: 'text-brand-700' },
                             { v: 'INCOME', label: 'รายรับ', tone: 'text-income-600' },
                             { v: 'EXPENSE', label: 'รายจ่าย', tone: 'text-expense-600' },
+                            { v: 'SAVING', label: 'เงินออม', tone: 'text-brand-600' },
                         ].map((opt) => (
                             <button
                                 key={opt.v}
@@ -451,7 +460,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
                         >
                             <option value="ALL">ทุกหมวดหมู่</option>
                             {categories
-                                .filter((c) => filterType === 'ALL' || c.type === filterType)
+                                .filter((c) => filterType === 'ALL' || (filterType === 'SAVING' ? isSavingType(c.type) : c.type === filterType))
                                 .map((cat) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                         </select>
                     </label>
@@ -501,7 +510,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
             </div>
 
             {/* สรุปยอด (ตามตัวกรอง) */}
-            <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 grid grid-cols-1 sm:grid-cols-[auto_auto_auto_minmax(0,1fr)] gap-x-9 gap-y-4 items-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="bg-white border border-slate-200 rounded-2xl px-5 py-4 grid grid-cols-2 sm:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-x-8 gap-y-4 items-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
                 <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs text-slate-600"><ArrowUp size={12} className="text-income-600" />รายรับ</span>
                     <span className="text-xl font-bold text-income-600 tabular-nums">+฿{formatMoney(totalIncome)}</span>
@@ -510,11 +519,17 @@ const HistoryPage = ({ userId, onNavigate }) => {
                     <span className="flex items-center gap-1 text-xs text-slate-600"><ArrowDown size={12} className="text-expense-600" />รายจ่าย</span>
                     <span className="text-xl font-bold text-expense-600 tabular-nums">−฿{formatMoney(totalExpense)}</span>
                 </div>
+                <div className="flex flex-col gap-0.5" title="ฝากเข้ากระปุก − ถอนออกจากกระปุก (ไม่นับเป็นรายจ่าย)">
+                    <span className="flex items-center gap-1 text-xs text-slate-600"><PiggyBank size={12} className="text-brand-600" />ออม</span>
+                    <span className={`text-xl font-bold tabular-nums ${totalSaving < 0 ? 'text-slate-700' : 'text-brand-600'}`}>
+                        {formatSigned(totalSaving, true)}
+                    </span>
+                </div>
                 <div className="flex flex-col gap-0.5">
-                    <span className="text-xs text-slate-600">สุทธิ · {netAmount < 0 ? 'ใช้เกินรายรับ' : 'เหลือเก็บ'}</span>
+                    <span className="text-xs text-slate-600">สุทธิ · {netAmount < 0 ? 'ใช้เกินรายรับ' : 'เหลือใช้'}</span>
                     <span className={`text-xl font-bold tabular-nums ${netAmount < 0 ? 'text-expense-600' : 'text-income-600'}`}>{formatSigned(netAmount, true)}</span>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="col-span-2 sm:col-span-1 flex flex-col gap-2">
                     <div className="flex justify-between gap-2 text-xs text-slate-500">
                         <span className="flex items-center gap-1.5"><Filter size={14} />ตามตัวกรองที่เลือก</span>
                         {totalIncome > 0 && (
@@ -528,9 +543,9 @@ const HistoryPage = ({ userId, onNavigate }) => {
                     </div>
                 </div>
                 {netAmount < 0 && (
-                    <div className="sm:col-span-4 flex items-center gap-2 px-2.5 py-2 rounded-[10px] bg-expense-50 text-expense-700 text-[13px] font-medium">
+                    <div className="col-span-2 sm:col-span-5 flex items-center gap-2 px-2.5 py-2 rounded-[10px] bg-expense-50 text-expense-700 text-[13px] font-medium">
                         <TrendingDown size={16} className="shrink-0" />
-                        ใช้เกินรายรับ ฿{formatMoney(Math.abs(netAmount))} ในช่วงที่เลือก
+                        ใช้เกินรายรับ ฿{formatMoney(Math.abs(netAmount))} ในช่วงที่เลือก{totalSaving > 0 ? ' (รวมเงินที่ฝากออม)' : ''}
                     </div>
                 )}
             </div>
@@ -701,11 +716,38 @@ const HistoryPage = ({ userId, onNavigate }) => {
                                     {formatDayLabel(editingItem.transactionDate)} · {formatTime(editingItem.transactionDate)}
                                 </span>
                             </div>
-                            <span className={`text-[22px] font-bold tabular-nums whitespace-nowrap ${editingItem.categoryType === 'INCOME' ? 'text-income-600' : 'text-expense-600'}`}>
-                                {editingItem.categoryType === 'INCOME' ? '+' : '−'}{formatMoney(editingItem.amount)}
+                            <span className={`text-[22px] font-bold tabular-nums whitespace-nowrap ${txnTone(editingItem.categoryType).color}`}>
+                                {txnTone(editingItem.categoryType).sign}{formatMoney(editingItem.amount)}
                             </span>
                         </div>
 
+                        {editingFromSavings ? (
+                            <div className="flex-1 overflow-y-auto px-6 pt-5 pb-6 flex flex-col gap-4">
+                                <div className="flex gap-3 items-start p-4 rounded-xl bg-gold-50">
+                                    <span className="w-9 h-9 shrink-0 rounded-full bg-white flex items-center justify-center">
+                                        <PiggyBank size={18} className="text-gold-700" />
+                                    </span>
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                        <span className="text-sm font-semibold text-gold-700">
+                                            {editingItem.categoryType === 'SAVING_IN' ? 'ฝากเงินเข้ากระปุก'
+                                                : editingItem.categoryType === 'SAVING_OUT' ? 'ถอนเงินออมกลับเข้ากระเป๋า'
+                                                    : 'รายจ่ายจากการถอนเงินออม'}
+                                        </span>
+                                        <span className="text-[13px] leading-[18px] text-slate-700">
+                                            กระปุก <b className="font-semibold">{editingItem.savingsGoalName || '-'}</b>
+                                            {isSavingType(editingItem.categoryType) ? ' · ย้ายเงินระหว่างกระเป๋ากับกระปุก ไม่นับเป็นรายรับ/รายจ่าย' : ''}
+                                            {' '}แก้ไขหรือลบได้ที่หน้าเงินออม เพื่อให้ยอดในกระปุกตรงกัน
+                                        </span>
+                                    </div>
+                                </div>
+                                {editingItem.description && (
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-xs text-slate-500">รายละเอียด</span>
+                                        <span className="text-[15px] text-slate-800">{editingItem.description}</span>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
                         <div className="flex-1 overflow-y-auto px-6 pt-5 pb-6 flex flex-col gap-6">
                             <TxnForm
                                 type={editing.type}
@@ -728,7 +770,24 @@ const HistoryPage = ({ userId, onNavigate }) => {
                                 <Trash2 size={18} /> ลบรายการ
                             </button>
                         </div>
+                        )}
 
+                        {editingFromSavings ? (
+                            <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-slate-200">
+                                <button
+                                    onClick={closeEdit}
+                                    className="w-[120px] h-12 rounded-xl border border-slate-200 bg-white text-slate-700 text-[15px] font-semibold hover:bg-slate-50"
+                                >
+                                    ปิด
+                                </button>
+                                <button
+                                    onClick={() => onOpenSavings && onOpenSavings(editingItem.savingsGoalId)}
+                                    className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
+                                >
+                                    <PiggyBank size={18} /> จัดการที่หน้าเงินออม
+                                </button>
+                            </div>
+                        ) : (
                         <div className="shrink-0 flex gap-3 px-6 py-4 border-t border-slate-200">
                             <button
                                 onClick={closeEdit}
@@ -746,6 +805,7 @@ const HistoryPage = ({ userId, onNavigate }) => {
                                 {savingEdit ? 'กำลังบันทึก…' : 'บันทึกการแก้ไข'}
                             </button>
                         </div>
+                        )}
                     </aside>
                 </>
             )}

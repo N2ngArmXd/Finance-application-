@@ -13,10 +13,14 @@ import {
     TrendingUp,
     Gift,
     Circle,
+    PiggyBank,
+    ArrowUpFromLine,
 } from 'lucide-react';
 
 // map ชื่อไอคอน (เก็บใน DB) -> component ของ lucide-react
 const ICON_MAP = {
+    PiggyBank,
+    ArrowUpFromLine,
     Utensils,
     Car,
     ShoppingBag,
@@ -35,6 +39,8 @@ const ICON_MAP = {
 
 // สีประจำแต่ละไอคอน (โทนใกล้เคียง emoji เดิม)
 const COLOR_MAP = {
+    PiggyBank: 'text-brand-600',
+    ArrowUpFromLine: 'text-slate-600',
     Utensils: 'text-orange-500',
     Car: 'text-blue-500',
     ShoppingBag: 'text-pink-500',
@@ -53,6 +59,8 @@ const COLOR_MAP = {
 
 // พื้นวงกลมอ่อน (-50) คู่กับสีไอคอน ใช้กับ CategoryAvatar
 const SOFT_MAP = {
+    PiggyBank: 'bg-brand-50',
+    ArrowUpFromLine: 'bg-slate-100',
     Utensils: 'bg-orange-50',
     Car: 'bg-blue-50',
     ShoppingBag: 'bg-pink-50',

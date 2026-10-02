@@ -1,6 +1,6 @@
 // src/components/Sidebar.jsx
 import React from 'react';
-import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet, Coins, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet, Coins, LogOut, User, PiggyBank } from 'lucide-react';
 
 export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage, user, onLogout }) {
     const menuItems = [
@@ -8,6 +8,7 @@ export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage, 
         { id: 'history', icon: <Wallet size={22} />, label: 'ประวัติธุรกรรม' },
         { id: 'transaction', icon: <PlusCircle size={22} />, label: 'บันทึกรายธุรกรรม' },
         { id: 'installment', icon: <Coins size={22} />, label: 'ตารางผ่อนชำระ' },
+        { id: 'savings', icon: <PiggyBank size={22} />, label: 'เงินออม' },
     ];
 
     return (

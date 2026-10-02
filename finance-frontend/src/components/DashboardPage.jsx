@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Coins, Check, AlertTriangle, ArrowRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Wallet, Coins, Check, AlertTriangle, ArrowRight, PiggyBank } from 'lucide-react';
 import CategoryIcon from '../utils/categoryIcons';
+import { goalColor } from '../utils/savingsTheme';
+import GoalAvatar from './savings/GoalAvatar';
+import { savingsApi } from '../utils/savingsApi';
 import { showError } from '../utils/swr';
 import { formatDate } from '../utils/format';
 
@@ -30,7 +33,7 @@ const percentChange = (current, previous) => {
     return ((current - previous) / previous) * 100;
 };
 
-export default function DashboardPage({ userId, onOpenInstallment }) {
+export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings }) {
     const thisMonth = toMonthKey(new Date());
     const [month, setMonth] = useState(thisMonth);
     const [data, setData] = useState(null);
@@ -105,6 +108,7 @@ export default function DashboardPage({ userId, onOpenInstallment }) {
                         <ExpenseByCategory items={data.expenseByCategory} total={data.totalExpense} />
                         <InstallmentsDue data={data} onOpen={onOpenInstallment} />
                     </div>
+                    <SavingsOverview data={data} userId={userId} onOpen={onOpenSavings} />
                 </div>
             )}
         </div>
@@ -120,6 +124,9 @@ function KpiRow({ data }) {
     if (data.installmentOverdueTotal > 0) {
         installmentSub += ` · ค้าง ${formatCurrency(data.installmentOverdueTotal)}`;
     }
+    // เงินที่ฝากเข้ากระปุกไม่ใช่รายจ่าย แต่ไม่ใช่เงินที่ใช้ได้แล้ว จึงหักออกจากคงเหลือ
+    const savingsNet = data.savingsNetThisMonth || 0;
+    const remaining = data.net - savingsNet;
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -140,11 +147,11 @@ function KpiRow({ data }) {
             />
             <KpiCard
                 label="คงเหลือสุทธิ"
-                value={data.net}
+                value={remaining}
                 icon={<Wallet size={20} />}
-                tone={data.net < 0 ? 'expense' : 'brand'}
-                valueClass={data.net < 0 ? 'text-expense-600' : undefined}
-                sub="รายรับ − รายจ่าย"
+                tone={remaining < 0 ? 'expense' : 'brand'}
+                valueClass={remaining < 0 ? 'text-expense-600' : undefined}
+                sub={savingsNet ? `รายรับ − รายจ่าย − ออม ${formatCurrency(savingsNet)}` : 'รายรับ − รายจ่าย'}
             />
             <KpiCard
                 label="ค่างวดเดือนนี้"
@@ -245,6 +252,102 @@ function ExpenseByCategory({ items, total }) {
     );
 }
 
+
+const TOP_GOALS = 3;
+
+// เงินออม: ยอดรวม ณ สิ้นเดือนที่เลือก + ออมเดือนนี้ + กระปุก (ยอดปัจจุบัน) 3 ใบแรก
+function SavingsOverview({ data, userId, onOpen }) {
+    const [goals, setGoals] = useState(null);
+
+    useEffect(() => {
+        if (!userId) return;
+        savingsApi('list', { userId })
+            .then((list) => setGoals((list || []).filter((g) => g.status !== 'ARCHIVED')))
+            .catch(() => setGoals([]));
+    }, [userId]);
+
+    // กระปุกที่ใกล้เป้าที่สุดขึ้นก่อน (ไม่มีเป้าไว้ท้าย)
+    const top = (goals || [])
+        .slice()
+        .sort((a, b) => (b.progress ?? -1) - (a.progress ?? -1))
+        .slice(0, TOP_GOALS);
+    const net = data.savingsNetThisMonth || 0;
+
+    return (
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-xl font-bold text-slate-700">เงินออม</h2>
+                <button
+                    type="button"
+                    onClick={() => onOpen()}
+                    className="inline-flex items-center gap-1 text-sm font-bold text-brand-600 hover:text-brand-700 transition-colors"
+                >
+                    ไปหน้าเงินออม <ArrowRight size={16} />
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="text-xs text-slate-500 mb-1">เงินออมรวม</div>
+                    <div className="font-black text-slate-700 text-lg">{formatCurrency(data.savingsTotal)}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="text-xs text-slate-500 mb-1">ออมสุทธิเดือนนี้</div>
+                    <div className={`font-black text-lg ${net < 0 ? 'text-expense-600' : 'text-brand-600'}`}>{formatCurrency(net)}</div>
+                </div>
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <div className="text-xs text-slate-500 mb-1">อัตราการออม</div>
+                    <div className="font-black text-slate-700 text-lg">
+                        {data.savingsRate == null ? '-' : `${(data.savingsRate * 100).toFixed(0)}%`}
+                    </div>
+                </div>
+                <div className={`p-3 rounded-2xl border ${data.availableBalance < 0 ? 'bg-expense-50 border-expense-100' : 'bg-slate-50 border-slate-100'}`}>
+                    <div className="text-xs text-slate-500 mb-1">เงินใช้ได้ (สะสม)</div>
+                    <div className={`font-black text-lg ${data.availableBalance < 0 ? 'text-expense-600' : 'text-slate-700'}`}>{formatCurrency(data.availableBalance)}</div>
+                </div>
+            </div>
+
+            {goals == null ? null : top.length === 0 ? (
+                <button
+                    type="button"
+                    onClick={() => onOpen()}
+                    className="w-full flex items-center justify-center gap-2 text-slate-500 py-6 border-2 border-dashed border-slate-100 rounded-2xl hover:bg-slate-50"
+                >
+                    <PiggyBank size={18} /> ยังไม่มีกระปุก · สร้างกระปุกแรก
+                </button>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {top.map((g) => (
+                        <button
+                            type="button"
+                            key={g.savingsGoalId}
+                            onClick={() => onOpen(g.savingsGoalId)}
+                            title="เปิดในหน้าเงินออม"
+                            className="text-left p-3 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-colors flex flex-col gap-2"
+                        >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <GoalAvatar icon={g.icon} color={g.color} size={32} />
+                                <span className="font-semibold text-slate-700 truncate">{g.name}</span>
+                            </div>
+                            <div className="text-sm text-slate-600">
+                                <span className="font-bold text-slate-800">{formatCurrency(g.balance)}</span>
+                                {g.targetAmount != null && <span className="text-slate-400"> / {formatCurrency(g.targetAmount)}</span>}
+                            </div>
+                            {g.progress != null && (
+                                <div className="w-full bg-slate-100 rounded-full h-2">
+                                    <div
+                                        className={`h-2 rounded-full ${g.reached ? 'bg-income-500' : goalColor(g.color).bar}`}
+                                        style={{ width: `${Math.min(g.progress, 1) * 100}%` }}
+                                    />
+                                </div>
+                            )}
+                        </button>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 // สถานะงวด: ค้างชำระ > จ่ายแล้ว > ถึงกำหนดแล้ว > ยังไม่ถึงกำหนด
 function DueStatus({ row, today }) {

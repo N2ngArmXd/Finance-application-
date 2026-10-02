@@ -11,6 +11,17 @@ export const formatTxnId = (id) => {
 export const formatMoney = (n) =>
     Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// เครื่องหมาย/สีของยอดตามประเภทหมวด (มองจากเงินใช้ได้)
+// ฝากเงินออม = เงินออกจากกระเป๋าไปกระปุก (−, สีน้ำเงิน) · ถอนเงินออม = กลับเข้ากระเป๋า (+, สีเทา)
+const TXN_TONES = {
+    INCOME: { sign: '+', color: 'text-income-600' },
+    EXPENSE: { sign: '−', color: 'text-expense-600' },
+    SAVING_IN: { sign: '−', color: 'text-brand-600' },
+    SAVING_OUT: { sign: '+', color: 'text-slate-700' },
+};
+export const txnTone = (categoryType) => TXN_TONES[categoryType] || TXN_TONES.EXPENSE;
+export const isSavingType = (categoryType) => categoryType === 'SAVING_IN' || categoryType === 'SAVING_OUT';
+
 // ยอดแบบมีเครื่องหมาย เช่น +1,250.00 / −120.00 (ศูนย์ไม่มีเครื่องหมาย)
 export const formatSigned = (n, withBaht = false) => {
     const sign = n > 0 ? '+' : n < 0 ? '−' : '';
@@ -47,6 +58,23 @@ export const formatTime = (value) => {
     const d = new Date(value);
     if (isNaN(d.getTime())) return '';
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
+
+// ช่องกรอกยอดเงิน: แสดงพร้อมคอมมา (เก็บค่าจริงเป็นตัวเลขล้วน เช่น "1250.5")
+export const toAmountDisplay = (raw) => {
+    if (raw === '' || raw == null) return '';
+    const [i, d] = String(raw).split('.');
+    const ii = i === '' ? '0' : Number(i).toLocaleString('en-US');
+    return d === undefined ? ii : `${ii}.${d}`;
+};
+
+// ช่องกรอกยอดเงิน: รับเฉพาะตัวเลขและจุด ทศนิยมไม่เกิน 2 ตำแหน่ง
+export const sanitizeAmount = (value) => {
+    let v = value.replace(/[^\d.]/g, '');
+    const parts = v.split('.');
+    if (parts.length > 2) v = `${parts[0]}.${parts.slice(1).join('')}`;
+    const [i, d] = v.split('.');
+    return i.replace(/^0+(?=\d)/, '').slice(0, 9) + (d !== undefined ? `.${d.slice(0, 2)}` : '');
 };
 
 // แปลงวันที่ให้อยู่ในรูปแบบ DD/MM/YYYY (ปฏิทินพุทธศักราช)
