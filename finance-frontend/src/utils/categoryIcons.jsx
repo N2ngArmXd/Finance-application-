@@ -51,6 +51,37 @@ const COLOR_MAP = {
     Circle: 'text-slate-400',
 };
 
+// พื้นวงกลมอ่อน (-50) คู่กับสีไอคอน ใช้กับ CategoryAvatar
+const SOFT_MAP = {
+    Utensils: 'bg-orange-50',
+    Car: 'bg-blue-50',
+    ShoppingBag: 'bg-pink-50',
+    Home: 'bg-emerald-50',
+    ReceiptText: 'bg-amber-50',
+    HeartPulse: 'bg-red-50',
+    Music: 'bg-purple-50',
+    GraduationCap: 'bg-indigo-50',
+    CreditCard: 'bg-sky-50',
+    Wallet: 'bg-teal-50',
+    Coins: 'bg-yellow-50',
+    TrendingUp: 'bg-green-50',
+    Gift: 'bg-rose-50',
+    Circle: 'bg-slate-100',
+};
+
+// ไอคอนหมวดในวงกลมพื้นอ่อน (size = เส้นผ่านศูนย์กลาง px)
+export function CategoryAvatar({ name, size = 40, className = '' }) {
+    const soft = SOFT_MAP[name] || SOFT_MAP.Circle;
+    return (
+        <span
+            className={`shrink-0 rounded-full flex items-center justify-center ${soft} ${className}`}
+            style={{ width: size, height: size }}
+        >
+            <CategoryIcon name={name} size={Math.round(size / 2)} strokeWidth={1.9} />
+        </span>
+    );
+}
+
 // แสดงไอคอนหมวดหมู่จากชื่อที่เก็บใน DB พร้อมสีประจำหมวด
 // ส่ง className มาเพิ่มได้ (จะต่อท้าย จึง override สีได้ถ้าต้องการ)
 export default function CategoryIcon({ name, className = '', ...props }) {

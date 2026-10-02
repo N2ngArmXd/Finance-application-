@@ -63,10 +63,10 @@ function App() {
           )}
 
           {activePage === 'transaction' && (
-            <TransactionPage userId={user.id} />
+            <TransactionPage userId={user.id} onNavigate={setActivePage} />
           )}
           {activePage === 'history' && (
-            <HistoryPage userId={user.id} />
+            <HistoryPage userId={user.id} onNavigate={setActivePage} />
           )}
           {activePage === 'installment' && (
             <Installments
