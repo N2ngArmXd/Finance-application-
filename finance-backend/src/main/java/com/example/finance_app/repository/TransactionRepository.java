@@ -72,4 +72,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("categoryId") Long categoryId,
             @Param("dateFrom") LocalDateTime dateFrom,
             @Param("dateTo") LocalDateTime dateTo);
+
+    // รายจ่ายรวมแยกหมวดในช่วงวันที่ [dateFrom, dateTo) -> [categoryId, name, icon, sum] (dashboard)
+    @Query("SELECT c.id, c.name, c.icon, SUM(t.amount) FROM Transaction t JOIN t.categoryId c "
+            + "WHERE t.userId.id = :userId AND t.isDeleted = false AND c.type = 'EXPENSE' "
+            + "AND t.transactionDate >= :dateFrom AND t.transactionDate < :dateTo "
+            + "GROUP BY c.id, c.name, c.icon ORDER BY SUM(t.amount) DESC")
+    List<Object[]> sumExpenseByCategory(
+            @Param("userId") Long userId,
+            @Param("dateFrom") LocalDateTime dateFrom,
+            @Param("dateTo") LocalDateTime dateTo);
 }
