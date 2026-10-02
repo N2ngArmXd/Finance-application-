@@ -81,7 +81,7 @@ export default function TxnForm({
                 >
                     <span className={`text-[13px] leading-[18px] font-semibold ${isExpense ? 'text-expense-700' : 'text-income-700'}`}>จำนวนเงิน</span>
                     <span className="flex items-baseline gap-1">
-                        <span className={`shrink-0 whitespace-nowrap text-[28px] leading-[52px] font-semibold tabular-nums ${isExpense ? 'text-expense-600' : 'text-income-600'}`}>
+                        <span className={`shrink-0 whitespace-nowrap text-2xl sm:text-[28px] leading-[44px] sm:leading-[52px] font-semibold tabular-nums ${isExpense ? 'text-expense-600' : 'text-income-600'}`}>
                             {isExpense ? '−' : '+'}฿
                         </span>
                         <input
@@ -91,7 +91,7 @@ export default function TxnForm({
                             placeholder="0.00"
                             aria-label="จำนวนเงิน"
                             autoFocus={autoFocusAmount}
-                            className={`flex-1 min-w-0 w-0 bg-transparent outline-none p-0 text-[44px] leading-[52px] font-bold tracking-tight tabular-nums placeholder:text-slate-300 ${isExpense ? 'text-expense-600 caret-expense-600' : 'text-income-600 caret-income-600'}`}
+                            className={`flex-1 min-w-0 w-0 bg-transparent outline-none p-0 text-[36px] sm:text-[44px] leading-[44px] sm:leading-[52px] font-bold tracking-tight tabular-nums placeholder:text-slate-300 ${isExpense ? 'text-expense-600 caret-expense-600' : 'text-income-600 caret-income-600'}`}
                         />
                     </span>
                 </label>
