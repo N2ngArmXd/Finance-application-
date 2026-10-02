@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, ArrowUpCircle, ArrowDownCircle, Edit2, Trash2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, Filter, ArrowUpCircle, ArrowDownCircle, Edit2, Trash2, ArrowUp, ArrowDown, ArrowUpDown, ChevronLeft, ChevronRight, X, Wallet } from 'lucide-react';
 import { showSuccess, showError, showConfirm } from '../utils/swr';
 import Swal from 'sweetalert2';
 import { formatTxnId, formatDate } from '../utils/format';
@@ -331,6 +331,8 @@ const HistoryPage = ({ userId }) => {
 
     const { content, totalElements, totalPages, totalIncome, totalExpense } = pageData;
     const safePage = Math.min(currentPage, Math.max(1, totalPages));
+    const netAmount = totalIncome - totalExpense;
+    const formatMoney = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
         <div className="space-y-6 animate-zoom-in">
@@ -443,27 +445,46 @@ const HistoryPage = ({ userId }) => {
                 )}
             </div>
 
-            {/* Section 2: INCOME/EXPENSE */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Section 2: INCOME / EXPENSE / NET */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {/* Card รายรับ */}
                 <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-income-500 flex items-center justify-between">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-slate-500 font-medium">รายรับรวม</p>
-                        <h3 className="text-3xl font-black text-slate-800 mt-1">
-                            ฿{totalIncome.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <h3 className="text-3xl font-black text-income-600 mt-1 truncate">
+                            ฿{formatMoney(totalIncome)}
                         </h3>
                     </div>
-                    <ArrowUpCircle size={48} className="text-income-500 opacity-20" />
+                    <ArrowUpCircle size={48} className="shrink-0 text-income-500 opacity-20" />
                 </div>
 
                 {/* Card รายจ่าย */}
                 <div className="bg-white p-8 rounded-[2rem] shadow-sm border-l-8 border-expense-500 flex items-center justify-between">
-                    <div>
+                    <div className="min-w-0">
                         <p className="text-slate-500 font-medium">รายจ่ายรวม</p>
-                        <h3 className="text-3xl font-black text-slate-800 mt-1">
-                            ฿{totalExpense.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        <h3 className="text-3xl font-black text-expense-600 mt-1 truncate">
+                            ฿{formatMoney(totalExpense)}
                         </h3>
                     </div>
-                    <ArrowDownCircle size={48} className="text-expense-500 opacity-20" />
+                    <ArrowDownCircle size={48} className="shrink-0 text-expense-500 opacity-20" />
+                </div>
+
+                {/* Card ยอดสุทธิ = รายรับ - รายจ่าย */}
+                <div className="md:col-span-2 xl:col-span-1 relative overflow-hidden p-8 rounded-[2rem] shadow-sm bg-gradient-to-br from-brand-600 to-brand-800 text-white flex items-center justify-between">
+                    <div className="min-w-0 relative z-10">
+                        <p className="text-white/70 font-medium">ยอดสุทธิ</p>
+                        <h3 className="text-3xl font-black mt-1 truncate">
+                            {netAmount < 0 ? '-' : netAmount > 0 ? '+' : ''}฿{formatMoney(Math.abs(netAmount))}
+                        </h3>
+                        <p className="text-xs text-white/60 mt-2">
+                            รายรับ − รายจ่าย ·{' '}
+                            <span className={`font-bold ${netAmount < 0 ? 'text-expense-200' : 'text-income-200'}`}>
+                                {netAmount < 0 ? 'ใช้เกินรายรับ' : 'เหลือเก็บ'}
+                            </span>
+                        </p>
+                    </div>
+                    <Wallet size={48} className="shrink-0 relative z-10 opacity-30" />
+                    <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-white/10" />
                 </div>
             </div>
 

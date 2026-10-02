@@ -44,7 +44,7 @@ public class AuthService {
     public Long registerStep1(RegisterRequest request) {
 
         Users user = new Users();
-        user.setId(generateUnique6DigitId());
+        user.setId(generateUnique13DigitId());
         user.setUsername(request.getUsername());
         user.setPassword(request.getPassword());
         user.setEmail(request.getEmail());
@@ -54,10 +54,10 @@ public class AuthService {
         return savedUser.getId();
     }
 
-    private Long generateUnique6DigitId() {
+    private Long generateUnique13DigitId() {
         Long newId;
         do {
-            newId = ThreadLocalRandom.current().nextLong(100000L, 1000000L);
+            newId = ThreadLocalRandom.current().nextLong(1_000_000_000_000L, 10_000_000_000_000L);
         } while (usersRepository.existsById(newId));
         return newId;
     }
