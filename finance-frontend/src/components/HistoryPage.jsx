@@ -679,7 +679,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
 
             {/* แถบเมื่อเลือกหลายรายการ */}
             {selectedIds.size > 0 && !editing && (
-                <div className="fixed left-1/2 bottom-7 z-50 w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2 h-14 flex items-center gap-2 pl-[18px] pr-2 rounded-2xl bg-slate-900 text-white shadow-[0_12px_32px_-8px_rgba(15,23,42,0.45)] animate-toast-in">
+                <div className="fixed left-1/2 bottom-float z-50 w-[440px] max-w-[calc(100vw-32px)] -translate-x-1/2 h-14 flex items-center gap-2 pl-[18px] pr-2 rounded-2xl bg-slate-900 text-white shadow-[0_12px_32px_-8px_rgba(15,23,42,0.45)] animate-toast-in">
                     <span className="flex-1 text-sm font-medium">เลือกแล้ว {selectedIds.size} รายการ</span>
                     <button onClick={clearSelection} className="h-10 px-3 rounded-[10px] text-sm font-semibold text-slate-300 hover:text-white">
                         ยกเลิก

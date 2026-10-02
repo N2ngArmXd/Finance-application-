@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
+import { MobileHeader, BottomNav } from './components/MobileNav';
 import Login from './components/Login';
 import RegisterForm from './components/RegisterForm';
 import TransactionPage from './components/TransactionPage';
@@ -51,8 +52,8 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar */}
+    <div className="min-h-dvh bg-slate-50 lg:flex">
+      {/* Sidebar (desktop) */}
       <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
@@ -63,9 +64,12 @@ function App() {
       />
 
       {/* Main Content Area */}
-      <div className={`flex-1 transition-all duration-300 ${isSidebarOpen ? 'ml-72' : 'ml-20'}`}>
-        {/* Content Section */}
-        <main className="p-8">
+      <div className={`flex-1 min-w-0 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-72' : 'lg:ml-20'}`}>
+        {/* แถบหัว (มือถือ / แท็บเล็ต) */}
+        <MobileHeader user={user} onLogout={handleLogout} />
+
+        {/* Content Section — มือถือเว้นที่ด้านล่างให้ BottomNav */}
+        <main className="px-4 pt-4 pb-bottom-nav md:px-6 md:pt-6 lg:p-8">
           {activePage === 'dashboard' && (
             <DashboardPage userId={user.id} onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
           )}
@@ -92,6 +96,9 @@ function App() {
           )}
         </main>
       </div>
+
+      {/* เมนูล่าง (มือถือ / แท็บเล็ต) */}
+      <BottomNav activePage={activePage} setActivePage={setActivePage} />
     </div>
   );
 }

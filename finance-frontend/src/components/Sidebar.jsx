@@ -1,18 +1,12 @@
 // src/components/Sidebar.jsx
 import React from 'react';
-import { LayoutDashboard, PlusCircle, ChevronLeft, ChevronRight, Wallet, Coins, LogOut, User, PiggyBank } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, User } from 'lucide-react';
+import { navItems } from './navItems';
 
+// แสดงเฉพาะจอ lg ขึ้นไป (จอเล็กกว่านั้นใช้ MobileHeader + BottomNav)
 export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage, user, onLogout }) {
-    const menuItems = [
-        { id: 'dashboard', icon: <LayoutDashboard size={22} />, label: 'หน้าหลัก' },
-        { id: 'history', icon: <Wallet size={22} />, label: 'ประวัติธุรกรรม' },
-        { id: 'transaction', icon: <PlusCircle size={22} />, label: 'บันทึกรายธุรกรรม' },
-        { id: 'installment', icon: <Coins size={22} />, label: 'ตารางผ่อนชำระ' },
-        { id: 'savings', icon: <PiggyBank size={22} />, label: 'เงินออม' },
-    ];
-
     return (
-        <div className={`fixed top-0 left-0 h-full bg-brand-600 border-r border-brand-700 transition-all duration-300 z-50 flex flex-col ${isOpen ? 'w-72' : 'w-20'
+        <div className={`hidden lg:flex fixed top-0 left-0 h-full bg-brand-600 border-r border-brand-700 transition-all duration-300 z-50 flex-col ${isOpen ? 'w-72' : 'w-20'
             }`}>
 
             {/* ส่วนหัว Sidebar */}
@@ -31,7 +25,7 @@ export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage, 
 
             {/* รายการเมนู */}
             <nav className="px-4 space-y-2 flex-1">
-                {menuItems.map((item) => (
+                {navItems.map((item) => (
                     <button
                         key={item.id}
                         onClick={() => setActivePage(item.id)}
@@ -40,7 +34,7 @@ export default function Sidebar({ isOpen, setIsOpen, activePage, setActivePage, 
                             : 'text-brand-200 hover:bg-brand-500/60 hover:text-white'
                             }`}
                     >
-                        <div className="min-w-[24px]">{item.icon}</div>
+                        <div className="min-w-[24px]"><item.Icon size={22} /></div>
                         <span className={`font-bold whitespace-nowrap ${!isOpen && 'hidden'}`}>
                             {item.label}
                         </span>
