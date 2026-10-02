@@ -91,8 +91,8 @@ cd finance-frontend && npm install
 npm run dev
 
 # หรือรันแยกกัน
-npm run backend    # Spring Boot -> http://localhost:8081
-npm run frontend   # Vite dev server -> http://localhost:5173
+mvn spring-boot:run    # Spring Boot -> http://localhost:8081
+npx vite --host   # Vite dev server -> http://localhost:5173
 ```
 
 - **Backend API:** http://localhost:8081/finance-app
