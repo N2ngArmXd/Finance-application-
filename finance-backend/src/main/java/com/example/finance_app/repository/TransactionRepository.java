@@ -32,6 +32,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("UPDATE Transaction t SET t.isDeleted = true WHERE t.id IN :ids AND t.userId.id = :userId")
     int softDeleteByIds(@Param("ids") List<Long> ids, @Param("userId") Long userId);
 
+    // จำนวนรายการที่มาจากการถอนเงินออม (กันลบจากหน้าประวัติ)
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.id IN :ids AND t.savingsMovementId IS NOT NULL")
+    long countSavingsSpend(@Param("ids") List<Long> ids);
+
     // Get list Transaction
     @Query("SELECT t FROM Transaction t " +
             "JOIN FETCH t.categoryId c " +
@@ -42,7 +46,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // เงื่อนไขค้นหา/กรองแบบ optional (พารามิเตอร์ null = ไม่กรองข้อนั้น) ใช้ร่วมกันทั้งหน้าและยอดสรุป
     String FILTER = "WHERE t.userId.id = :userId AND t.isDeleted = false "
-            + "AND (:type IS NULL OR c.type = :type) "
+            // type เป็น pattern ของ LIKE (SAVING = 'SAVING\_%' ครอบทั้งฝาก/ถอนเงินออม)
+            + "AND (CAST(:type AS string) IS NULL OR c.type LIKE CAST(:type AS string) ESCAPE '\\') "
             + "AND (:categoryId IS NULL OR c.id = :categoryId) "
             // ใช้ COALESCE กับคอลัมน์ timestamp เพื่อให้ Postgres อนุมานชนิด param ได้ (เลี่ยง :date IS NULL บน param เปล่า)
             + "AND t.transactionDate >= COALESCE(:dateFrom, t.transactionDate) "

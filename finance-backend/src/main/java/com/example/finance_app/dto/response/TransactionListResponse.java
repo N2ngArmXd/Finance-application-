@@ -17,6 +17,11 @@ public class TransactionListResponse {
     private String categoryIcon;
     private Long categoryId;
 
+    // รายจ่ายจากการถอนเงินออมไปใช้ (null = บันทึกเอง) — หน้าประวัติแสดง badge และห้ามแก้/ลบ
+    private Long savingsMovementId;
+    private Long savingsGoalId;
+    private String savingsGoalName;
+
     public TransactionListResponse(Long id, BigDecimal amount, String description, LocalDateTime transactionDate,
             String categoryName, String categoryType, Long categoryId) {
         this.id = id;
@@ -90,6 +95,30 @@ public class TransactionListResponse {
 
     public void setCategoryId(Long categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public Long getSavingsMovementId() {
+        return savingsMovementId;
+    }
+
+    public void setSavingsMovementId(Long savingsMovementId) {
+        this.savingsMovementId = savingsMovementId;
+    }
+
+    public Long getSavingsGoalId() {
+        return savingsGoalId;
+    }
+
+    public void setSavingsGoalId(Long savingsGoalId) {
+        this.savingsGoalId = savingsGoalId;
+    }
+
+    public String getSavingsGoalName() {
+        return savingsGoalName;
+    }
+
+    public void setSavingsGoalName(String savingsGoalName) {
+        this.savingsGoalName = savingsGoalName;
     }
 
 }

@@ -6,6 +6,7 @@ import TransactionPage from './components/TransactionPage';
 import HistoryPage from './components/HIstoryPage';
 import Installments from './components/Installments';
 import DashboardPage from './components/DashboardPage';
+import Savings from './components/Savings';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -18,6 +19,13 @@ function App() {
   const openInstallment = (installmentsId = null) => {
     setInstallmentFocusId(installmentsId);
     setActivePage('installment');
+  };
+
+  // กระปุกเงินออมที่ต้องไฮไลต์เมื่อกดมาจากหน้าอื่น (dashboard / ประวัติธุรกรรม)
+  const [savingsFocusId, setSavingsFocusId] = useState(null);
+  const openSavings = (savingsGoalId = null) => {
+    setSavingsFocusId(savingsGoalId);
+    setActivePage('savings');
   };
 
   useEffect(() => {
@@ -59,14 +67,21 @@ function App() {
         {/* Content Section */}
         <main className="p-8">
           {activePage === 'dashboard' && (
-            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} />
+            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
           )}
 
           {activePage === 'transaction' && (
             <TransactionPage userId={user.id} onNavigate={setActivePage} />
           )}
           {activePage === 'history' && (
-            <HistoryPage userId={user.id} onNavigate={setActivePage} />
+            <HistoryPage userId={user.id} onNavigate={setActivePage} onOpenSavings={openSavings} />
+          )}
+          {activePage === 'savings' && (
+            <Savings
+              userId={user.id}
+              focusId={savingsFocusId}
+              onFocusHandled={() => setSavingsFocusId(null)}
+            />
           )}
           {activePage === 'installment' && (
             <Installments

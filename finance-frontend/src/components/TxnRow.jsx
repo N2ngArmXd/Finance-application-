@@ -1,6 +1,6 @@
-import { Check, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight, PiggyBank } from 'lucide-react';
 import { CategoryAvatar } from '../utils/categoryIcons';
-import { formatTxnId, formatMoney, formatTime, formatDayLabel } from '../utils/format';
+import { formatTxnId, formatMoney, formatTime, formatDayLabel, txnTone, isSavingType } from '../utils/format';
 
 // แถวรายการ: ไอคอนหมวด · รายละเอียด / หมวด + รหัส · (เวลา) · ยอด
 // variant 'list' = การ์ด "วันนี้" · 'table' = หน้าประวัติ (มี checkbox ตอน hover, เวลา, ลูกศร)
@@ -11,10 +11,16 @@ export default function TxnRow({
     onPress, onToggle,
 }) {
     const table = variant === 'table';
-    const isIncome = item.categoryType === 'INCOME';
+    const tone = txnTone(item.categoryType);
     const title = item.description || item.categoryName;
-    const amountText = `${isIncome ? '+' : '−'}${formatMoney(item.amount)}`;
+    const amountText = `${tone.sign}${formatMoney(item.amount)}`;
     const highlight = selected || active;
+    // รายการที่ระบบสร้างจากเงินออม (ฝาก/ถอน/ถอนไปใช้) — เลือกเพื่อลบหลายรายการไม่ได้ (จัดการที่หน้าเงินออม)
+    const fromSavings = item.savingsMovementId != null;
+    const savingBadge = isSavingType(item.categoryType)
+        ? item.savingsGoalName || 'เงินออม'
+        : `จากเงินออม${item.savingsGoalName ? ` · ${item.savingsGoalName}` : ''}`;
+    const selectable = table && !fromSavings;
 
     const handleKey = (e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -31,7 +37,8 @@ export default function TxnRow({
             onKeyDown={table ? handleKey : undefined}
             className={`group flex items-center gap-3 min-h-16 py-2.5 ${table ? 'px-5 cursor-pointer outline-none focus-visible:bg-slate-50' : 'px-4'} ${bordered ? 'border-t border-slate-100' : ''} ${highlight ? 'bg-brand-50' : table ? 'bg-white hover:bg-slate-50' : 'bg-white'} ${animate ? 'animate-row-in' : ''} transition-colors`}
         >
-            {table && (
+            {table && !selectable && <span className="w-7 shrink-0" />}
+            {selectable && (
                 <span
                     onClick={(e) => { e.stopPropagation(); onToggle && onToggle(); }}
                     className={`w-7 h-11 -my-2.5 shrink-0 flex items-center justify-center transition-opacity ${selected || anySelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'}`}
@@ -51,8 +58,16 @@ export default function TxnRow({
 
             <div className="flex-1 min-w-0 flex flex-col gap-0.5">
                 <span className="text-[15px] leading-[22px] font-medium text-slate-800 truncate">{title}</span>
-                <span className="text-[13px] leading-[18px] text-slate-500 truncate">
-                    {item.categoryName} · <span className="font-mono text-xs">#{formatTxnId(item.id)}</span>
+                <span className="flex items-center gap-1.5 min-w-0 text-[13px] leading-[18px] text-slate-500">
+                    <span className="truncate">
+                        {item.categoryName} · <span className="font-mono text-xs">#{formatTxnId(item.id)}</span>
+                    </span>
+                    {fromSavings && (
+                        <span className="shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-gold-50 text-gold-700 text-xs font-semibold flex items-center gap-1 max-w-[180px]">
+                            <PiggyBank size={12} className="shrink-0" />
+                            <span className="truncate">{savingBadge}</span>
+                        </span>
+                    )}
                 </span>
             </div>
 
@@ -62,7 +77,7 @@ export default function TxnRow({
                 </span>
             )}
 
-            <span className={`shrink-0 ${table ? 'min-w-[120px]' : ''} text-right text-[15px] leading-[22px] font-semibold tabular-nums whitespace-nowrap ${isIncome ? 'text-income-600' : 'text-expense-600'}`}>
+            <span className={`shrink-0 ${table ? 'min-w-[120px]' : ''} text-right text-[15px] leading-[22px] font-semibold tabular-nums whitespace-nowrap ${tone.color}`}>
                 {amountText}
             </span>
 

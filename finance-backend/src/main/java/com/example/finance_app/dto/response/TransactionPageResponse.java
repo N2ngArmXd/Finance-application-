@@ -14,6 +14,9 @@ public class TransactionPageResponse {
     // ยอดสรุปคำนวณจากทั้งชุดที่ตรงเงื่อนไข (ไม่ใช่เฉพาะหน้านี้)
     private BigDecimal totalIncome;
     private BigDecimal totalExpense;
+    // ฝาก/ถอนเงินออม (ไม่ใช่รายรับ/รายจ่าย) — สุทธิ = รายรับ − รายจ่าย − (ฝาก − ถอน)
+    private BigDecimal totalSavingIn = BigDecimal.ZERO;
+    private BigDecimal totalSavingOut = BigDecimal.ZERO;
 
     public TransactionPageResponse() {
     }
@@ -83,5 +86,21 @@ public class TransactionPageResponse {
 
     public void setTotalExpense(BigDecimal totalExpense) {
         this.totalExpense = totalExpense;
+    }
+
+    public BigDecimal getTotalSavingIn() {
+        return totalSavingIn;
+    }
+
+    public void setTotalSavingIn(BigDecimal totalSavingIn) {
+        this.totalSavingIn = totalSavingIn;
+    }
+
+    public BigDecimal getTotalSavingOut() {
+        return totalSavingOut;
+    }
+
+    public void setTotalSavingOut(BigDecimal totalSavingOut) {
+        this.totalSavingOut = totalSavingOut;
     }
 }
