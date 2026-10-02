@@ -4,7 +4,7 @@ import { MobileHeader, BottomNav } from './components/MobileNav';
 import Login from './components/Login';
 import RegisterForm from './components/RegisterForm';
 import TransactionPage from './components/TransactionPage';
-import HistoryPage from './components/HIstoryPage';
+import HistoryPage from './components/HistoryPage';
 import Installments from './components/Installments';
 import DashboardPage from './components/DashboardPage';
 import Savings from './components/Savings';

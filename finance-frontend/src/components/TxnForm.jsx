@@ -185,7 +185,7 @@ export default function TxnForm({
                     value={description}
                     onChange={(e) => onDescriptionChange(e.target.value)}
                     placeholder="เช่น ข้าวเที่ยง, ค่ารถ"
-                    className="h-12 w-full px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-[15px] text-slate-800 outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 transition-colors"
+                    className="h-12 w-full px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-base sm:text-[15px] text-slate-800 outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 transition-colors"
                 />
             </label>
         </div>
