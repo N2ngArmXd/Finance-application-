@@ -1,26 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { showSuccess, showError, showConfirm } from '../utils/swr';
-import { formatTxnId } from '../utils/format';
-import CategoryIcon from '../utils/categoryIcons';
-import { Save, Loader2, ArrowUpCircle, ArrowDownCircle, Calendar } from 'lucide-react';
+import { showConfirm } from '../utils/swr';
+import { formatMoney, formatSigned, toDateInput, formatDayLabel } from '../utils/format';
+import { Loader2, ArrowRight, NotebookPen } from 'lucide-react';
+import TxnForm from './TxnForm';
+import TxnRow from './TxnRow';
+import { Toast } from './ui/Toast';
+import { useToast } from './ui/useToast';
 
-// คืนค่าวันที่รูปแบบ YYYY-MM-DD (โซนเวลาเครื่องผู้ใช้)
-const toDateInput = (d) => {
-    const off = d.getTimezoneOffset();
-    return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
-};
+// กัน HTML แตกเวลาเอาข้อความผู้ใช้ไปใส่ใน dialog ยืนยัน
+const escapeHtml = (s) =>
+    String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-export default function TransactionPage({ userId }) {
+export default function TransactionPage({ userId, onNavigate }) {
     const [categories, setCategories] = useState([]);
     const [selectedType, setSelectedType] = useState('EXPENSE'); // เลือกประเภทก่อน default = รายจ่าย
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [date, setDate] = useState(toDateInput(new Date()));
+    const [errors, setErrors] = useState({});
 
     const [fetching, setFetching] = useState(true);
     const [loading, setLoading] = useState(false);
     const [recent, setRecent] = useState([]);
+    const [addedId, setAddedId] = useState(null);
+    const [toast, showToast] = useToast();
 
     const today = toDateInput(new Date());
     const yesterday = toDateInput(new Date(Date.now() - 86400000));
@@ -59,15 +63,11 @@ export default function TransactionPage({ userId }) {
         fetchRecent();
     }, [userId]);
 
-    // หมวดหมู่ที่แสดง = กรองตามประเภทที่เลือก
-    const visibleCategories = useMemo(
-        () => categories.filter((c) => c.type === selectedType),
-        [categories, selectedType]
-    );
-
-    // รายการวันนี้ + ยอดรวม (net)
+    // รายการวันนี้ (ใหม่ → เก่า) + ยอดรวม (net)
     const todayItems = useMemo(
-        () => recent.filter((t) => toDateInput(new Date(t.transactionDate)) === today),
+        () => recent
+            .filter((t) => toDateInput(new Date(t.transactionDate)) === today)
+            .sort((a, b) => new Date(b.transactionDate) - new Date(a.transactionDate)),
         [recent, today]
     );
     const todayNet = useMemo(
@@ -79,21 +79,34 @@ export default function TransactionPage({ userId }) {
         [todayItems]
     );
 
+    const isExpense = selectedType === 'EXPENSE';
+    const amountNum = parseFloat(amount);
+
     const handleSelectType = (type) => {
+        if (type === selectedType) return;
         setSelectedType(type);
         setSelectedCategoryId(null); // ล้างหมวดที่เลือกเมื่อสลับประเภท
     };
 
+    const handleAmountChange = (v) => {
+        setAmount(v);
+        setErrors((e) => ({ ...e, amt: undefined }));
+    };
+
+    const handleCategoryChange = (id) => {
+        setSelectedCategoryId(id);
+        setErrors((e) => ({ ...e, cat: undefined }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
 
-        const amountNum = parseFloat(amount);
-        if (!amountNum || amountNum <= 0) {
-            showError('จำนวนเงินไม่ถูกต้อง', 'กรุณากรอกจำนวนเงินมากกว่า 0');
-            return;
-        }
-        if (!selectedCategoryId) {
-            showError('ยังไม่ได้เลือกหมวดหมู่', 'กรุณาเลือกหมวดหมู่ก่อนบันทึก');
+        const nextErrors = {};
+        if (!amountNum || amountNum <= 0) nextErrors.amt = 'กรอกจำนวนเงินมากกว่า 0';
+        if (!selectedCategoryId) nextErrors.cat = 'เลือกหมวดหมู่ก่อนบันทึก';
+        if (Object.keys(nextErrors).length) {
+            setErrors(nextErrors);
             return;
         }
 
@@ -103,11 +116,11 @@ export default function TransactionPage({ userId }) {
         const amountColor = isExpense ? '#C2412D' : '#0F7A55';
         const summaryHtml = `
             <div style="text-align:left; font-size:0.95rem; color:#334155; line-height:1.9;">
-                <div><span style="color:#94a3b8;">ประเภท:</span> <b>${typeLabel}</b></div>
-                <div><span style="color:#94a3b8;">หมวดหมู่:</span> <b>${selectedCategory?.name ?? '-'}</b></div>
-                <div><span style="color:#94a3b8;">จำนวนเงิน:</span> <b style="color:${amountColor};">${isExpense ? '-' : '+'}${amountNum.toLocaleString()} บาท</b></div>
-                <div><span style="color:#94a3b8;">วันที่:</span> <b>${date}</b></div>
-                ${description ? `<div><span style="color:#94a3b8;">รายละเอียด:</span> <b>${description}</b></div>` : ''}
+                <div><span style="color:#64748b;">ประเภท:</span> <b>${typeLabel}</b></div>
+                <div><span style="color:#64748b;">หมวดหมู่:</span> <b>${escapeHtml(selectedCategory?.name ?? '-')}</b></div>
+                <div><span style="color:#64748b;">จำนวนเงิน:</span> <b style="color:${amountColor};">${isExpense ? '−' : '+'}${formatMoney(amountNum)} บาท</b></div>
+                <div><span style="color:#64748b;">วันที่:</span> <b>${formatDayLabel(date)}</b></div>
+                ${description ? `<div><span style="color:#64748b;">รายละเอียด:</span> <b>${escapeHtml(description)}</b></div>` : ''}
             </div>
         `;
         const confirmResult = await showConfirm('ยืนยันการบันทึกรายการ?', '', summaryHtml, 'question');
@@ -133,201 +146,118 @@ export default function TransactionPage({ userId }) {
             });
 
             if (res.ok) {
-                showSuccess('บันทึกเรียบร้อย!', 'รายการของคุณถูกบันทึกแล้ว');
+                const saved = await res.json().catch(() => null);
+                const when = date === today ? '' : ` · ${formatDayLabel(date)}`;
+                showToast(`บันทึกแล้ว ${isExpense ? '−' : '+'}฿${formatMoney(amountNum)}${when}`);
+                setAddedId(saved?.id ?? null);
                 setAmount('');
                 setDescription('');
                 setSelectedCategoryId(null);
                 fetchRecent();
             } else {
-                showError('บันทึกไม่สำเร็จ', 'กรุณาตรวจสอบข้อมูลอีกครั้ง');
+                showToast('บันทึกไม่สำเร็จ · กรุณาตรวจสอบข้อมูลอีกครั้ง', 'error');
             }
         } catch (e) {
             console.error('Error:', e);
-            showError('เชื่อมต่อไม่สำเร็จ', 'ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+            showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ · ข้อมูลยังอยู่ครบ', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const isExpense = selectedType === 'EXPENSE';
+    const saveLabel = loading
+        ? 'กำลังบันทึก…'
+        : `บันทึก${isExpense ? 'รายจ่าย' : 'รายรับ'}${amountNum > 0 ? ` · ${isExpense ? '−' : '+'}฿${formatMoney(amountNum)}` : ''}`;
+
+    const goHistory = () => onNavigate && onNavigate('history');
 
     return (
-        <div className="max-w-xl mx-auto space-y-5">
-            <h1 className="text-2xl font-black text-slate-800">บันทึกรายรับรายจ่าย</h1>
+        <div className="max-w-[928px] mx-auto flex flex-col gap-6">
+            <div className="flex items-center justify-between gap-4">
+                <h1 className="text-2xl font-bold text-slate-800">บันทึกรายการ</h1>
+                <button onClick={goHistory} className="h-10 px-1 flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700">
+                    ประวัติธุรกรรม <ArrowRight size={16} />
+                </button>
+            </div>
 
-            <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
-                <form onSubmit={handleSubmit} className="space-y-6">
-
-                    {/* 1. เลือกประเภทก่อน */}
-                    <div className="flex gap-2 bg-slate-100 p-1.5 rounded-2xl">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+                {/* ฟอร์ม */}
+                <form
+                    onSubmit={handleSubmit}
+                    className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                >
+                    <TxnForm
+                        type={selectedType}
+                        onTypeChange={handleSelectType}
+                        amount={amount}
+                        onAmountChange={handleAmountChange}
+                        categories={categories}
+                        loadingCats={fetching}
+                        categoryId={selectedCategoryId}
+                        onCategoryChange={handleCategoryChange}
+                        date={date}
+                        onDateChange={setDate}
+                        today={today}
+                        yesterday={yesterday}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        errors={errors}
+                        autoFocusAmount
+                    />
+                    <div className="flex flex-col gap-2">
                         <button
-                            type="button"
-                            onClick={() => handleSelectType('EXPENSE')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${isExpense ? 'bg-expense-500 text-white shadow' : 'text-slate-500'
-                                }`}
+                            type="submit"
+                            disabled={loading || fetching}
+                            className={`w-full h-[52px] rounded-xl text-white text-base font-semibold tabular-nums flex items-center justify-center gap-2 transition-colors duration-200 disabled:cursor-not-allowed ${loading ? 'opacity-85' : ''} ${isExpense ? 'bg-expense-600 hover:bg-expense-700' : 'bg-income-600 hover:bg-income-700'}`}
                         >
-                            <ArrowDownCircle size={20} /> รายจ่าย
+                            {loading && <Loader2 size={20} className="animate-spin" />}
+                            {saveLabel}
                         </button>
-                        <button
-                            type="button"
-                            onClick={() => handleSelectType('INCOME')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold transition-all ${!isExpense ? 'bg-income-500 text-white shadow' : 'text-slate-500'
-                                }`}
-                        >
-                            <ArrowUpCircle size={20} /> รายรับ
-                        </button>
+                        <span className="text-xs text-slate-500 text-center">
+                            กด <span className="font-mono px-1.5 py-px border border-slate-200 rounded-md bg-slate-50">Enter</span> เพื่อบันทึก · ประเภทและวันที่จะคงไว้สำหรับรายการถัดไป
+                        </span>
                     </div>
-
-                    {/* 2. หมวดหมู่ เป็นไอคอนกดเลือก (filter ตามประเภท) */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">หมวดหมู่</label>
-                        {fetching ? (
-                            <div className="text-center text-slate-400 py-6">กำลังโหลดหมวดหมู่...</div>
-                        ) : (
-                            <div className="grid grid-cols-4 gap-2">
-                                {visibleCategories.map((cat) => {
-                                    const active = selectedCategoryId === cat.id;
-                                    return (
-                                        <button
-                                            key={cat.id}
-                                            type="button"
-                                            onClick={() => setSelectedCategoryId(cat.id)}
-                                            className={`flex flex-col items-center justify-center gap-1.5 min-h-[82px] px-1 py-2 rounded-2xl border text-center transition-all ${active
-                                                    ? 'border-brand-500 border-2 bg-brand-50 text-brand-600'
-                                                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                        >
-                                            <CategoryIcon name={cat.icon} size={24} strokeWidth={1.75} />
-                                            <span className="text-[11px] font-medium leading-tight line-clamp-2 break-words w-full">
-                                                {cat.name}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 3. จำนวนเงิน (ใต้หมวดหมู่ มีกรอบชัดเจน) */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">จำนวนเงิน</label>
-                        <div
-                            className={`flex items-center gap-2 rounded-2xl border-2 px-4 py-3 bg-slate-50 transition-all focus-within:ring-2 ${isExpense
-                                    ? 'border-expense-200 focus-within:border-expense-400 focus-within:ring-expense-100'
-                                    : 'border-income-200 focus-within:border-income-400 focus-within:ring-income-100'
-                                }`}
-                        >
-                            <span className={`text-2xl font-black ${isExpense ? 'text-expense-400' : 'text-income-400'}`}>฿</span>
-                            <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                min="0"
-                                required
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
-                                placeholder="0.00"
-                                className={`flex-1 min-w-0 text-right text-3xl md:text-4xl font-black bg-transparent outline-none placeholder:text-slate-300 ${isExpense ? 'text-expense-500' : 'text-income-500'
-                                    }`}
-                            />
-                            <span className="text-sm text-slate-400 font-medium">บาท</span>
-                        </div>
-                    </div>
-
-                    {/* 4. วันที่ */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">วันที่</label>
-                        <div className="flex flex-wrap gap-2 items-center">
-                            <button
-                                type="button"
-                                onClick={() => setDate(today)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === today ? 'bg-brand-50 text-brand-600 border-brand-300' : 'bg-white text-slate-500 border-slate-200'
-                                    }`}
-                            >
-                                วันนี้
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setDate(yesterday)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${date === yesterday ? 'bg-brand-50 text-brand-600 border-brand-300' : 'bg-white text-slate-500 border-slate-200'
-                                    }`}
-                            >
-                                เมื่อวาน
-                            </button>
-                            <div className="relative flex items-center">
-                                <Calendar size={16} className="absolute left-3 text-slate-400 pointer-events-none" />
-                                <input
-                                    type="date"
-                                    max={today}
-                                    value={date}
-                                    onChange={(e) => setDate(e.target.value)}
-                                    className="pl-9 pr-3 py-2 rounded-full text-sm bg-white border border-slate-200 outline-none focus:ring-2 focus:ring-brand-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 5. รายละเอียด (ไม่บังคับ) */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
-                            รายละเอียด <span className="text-slate-400 font-normal">(ไม่ใส่ก็ได้)</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            placeholder="เช่น ข้าวเที่ยง, ค่ารถ..."
-                            className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-brand-500 outline-none"
-                        />
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading || fetching}
-                        className={`w-full py-4 rounded-2xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2 ${loading ? 'bg-slate-400' : 'bg-brand-600 hover:bg-brand-700 shadow-brand-100'
-                            }`}
-                    >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-                        {loading ? 'กำลังบันทึก...' : 'บันทึกรายการ'}
-                    </button>
                 </form>
-            </div>
 
-            {/* รายการล่าสุดวันนี้ */}
-            <div className="px-1">
-                <div className="flex justify-between items-baseline mb-2">
-                    <span className="text-sm font-bold text-slate-600">รายการล่าสุดวันนี้</span> 
-                </div>
-
-                {todayItems.length === 0 ? (
-                    <div className="text-center text-slate-400 text-sm py-6 bg-white rounded-2xl border border-dashed border-slate-200">
-                        ยังไม่มีรายการวันนี้ — เริ่มบันทึกได้เลย
+                {/* รายการวันนี้ */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                    <div className="flex items-baseline justify-between gap-3">
+                        <div className="flex items-baseline gap-2">
+                            <span className="text-base font-semibold text-slate-800">วันนี้</span>
+                            {todayItems.length > 0 && <span className="text-[13px] text-slate-500">{todayItems.length} รายการ</span>}
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                            {todayItems.length > 0 && <span className="text-xs text-slate-500">สุทธิ</span>}
+                            <span className={`text-base font-bold tabular-nums ${todayNet < 0 ? 'text-expense-600' : todayNet > 0 ? 'text-income-600' : 'text-slate-500'}`}>
+                                {formatSigned(todayNet, true)}
+                            </span>
+                        </div>
                     </div>
-                ) : (
-                    <div className="bg-white rounded-2xl border border-slate-100 divide-y divide-slate-50">
-                        {todayItems.slice(0, 3).map((t) => (
-                            <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-                                <CategoryIcon name={t.categoryIcon} size={20} strokeWidth={1.75} className="shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-slate-700 truncate">
-                                        {t.description || t.categoryName}
-                                    </p>
-                                    <p className="text-xs text-slate-400">
-                                        {t.categoryName} · <span className="font-mono">#{formatTxnId(t.id)}</span>
-                                    </p>
-                                </div>
-                                <span
-                                    className={`text-sm font-bold ${t.categoryType === 'INCOME' ? 'text-income-600' : 'text-expense-500'
-                                        }`}
-                                >
-                                    {t.categoryType === 'INCOME' ? '+' : '-'}
-                                    {Number(t.amount).toLocaleString()}
-                                </span>
+
+                    {todayItems.length === 0 ? (
+                        <div className="flex flex-col items-center gap-1.5 py-6 px-4 rounded-2xl border-[1.5px] border-dashed border-slate-300 text-center">
+                            <span className="w-11 h-11 mb-1 rounded-full bg-brand-50 flex items-center justify-center">
+                                <NotebookPen size={22} className="text-brand-600" />
+                            </span>
+                            <span className="text-[15px] font-semibold text-slate-800">ยังไม่มีรายการวันนี้</span>
+                            <span className="text-[13px] leading-[18px] text-slate-500">พิมพ์ยอดเงินแล้วเลือกหมวด รายการจะขึ้นที่นี่ทันที</span>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="-mx-5 border-y border-slate-100">
+                                {todayItems.slice(0, 5).map((t, i) => (
+                                    <TxnRow key={t.id} item={t} bordered={i > 0} animate={t.id === addedId} />
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                )}
+                            <button onClick={goHistory} className="self-start h-10 flex items-center gap-1 text-sm font-semibold text-brand-600 hover:text-brand-700">
+                                ดูทั้งหมด <ArrowRight size={16} />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
+
+            <Toast toast={toast} />
         </div>
     );
 }
