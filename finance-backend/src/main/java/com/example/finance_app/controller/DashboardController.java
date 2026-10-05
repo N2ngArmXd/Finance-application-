@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.DashboardRequest;
+import com.example.finance_app.security.CurrentUser;
 import com.example.finance_app.service.DashboardService;
 
 @RestController
@@ -22,8 +23,9 @@ public class DashboardController {
 
     // สรุปข้อมูลหน้า dashboard ของเดือนที่เลือก (KPI + รายจ่ายแยกหมวด + ค่างวดเดือนนี้)
     @PostMapping("/dashboard/summary")
-    public ResponseEntity<?> getSummary(@RequestBody DashboardRequest req) {
+    public ResponseEntity<?> getSummary(@RequestBody DashboardRequest req, @CurrentUser Long userId) {
         try {
+            req.setUserId(userId);
             return ResponseEntity.ok(dashboardService.getSummary(req));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

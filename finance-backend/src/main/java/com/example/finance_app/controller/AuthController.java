@@ -5,6 +5,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.LoginRequest;
 import com.example.finance_app.dto.request.RegisterRequest;
+import com.example.finance_app.dto.response.AuthResponse;
+import com.example.finance_app.security.CurrentUser;
+import com.example.finance_app.security.JwtService;
 import com.example.finance_app.service.AuthService;
 import com.example.finance_app.service.InputValidationException;
 
@@ -27,13 +31,39 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @Autowired
+    private JwtService jwtService;
+
+    // login ผ่าน → ส่ง JWT กลับเป็น httpOnly cookie (JS อ่านไม่ได้) + ข้อมูลผู้ใช้ใน body
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
+        AuthResponse user;
         try {
-            return ResponseEntity.ok(authService.login(req));
+            user = authService.login(req);
+        } catch (IllegalStateException e) {
+            // ถอดรหัสไม่ได้ (key ไม่ตรง / ข้อมูลเสีย) — ไม่บอกรายละเอียด client
+            log.error("Login failed", e);
+            return ResponseEntity.status(401).body("Username หรือ Password ไม่ถูกต้อง");
         } catch (Exception e) {
-            return ResponseEntity.status(401).body(e.getMessage());
+            return ResponseEntity.status(401).body("Username หรือ Password ไม่ถูกต้อง");
         }
+        String token = jwtService.issue(user.getId());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtService.loginCookie(token).toString())
+                .body(user);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, jwtService.logoutCookie().toString())
+                .body(Map.of("message", "ออกจากระบบแล้ว"));
+    }
+
+    // เช็คว่า cookie ยังใช้ได้ (เรียกตอนเปิดแอป) — ถ้าหมดอายุ interceptor ตอบ 401 ให้เอง
+    @PostMapping("/me")
+    public ResponseEntity<?> me(@CurrentUser Long userId) {
+        return ResponseEntity.ok(authService.currentUser(userId));
     }
 
     // ===================== Register =====================

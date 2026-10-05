@@ -1,7 +1,6 @@
 package com.example.finance_app.controller;
 
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,6 +17,7 @@ import com.example.finance_app.dto.request.TransactionRequest;
 import com.example.finance_app.dto.request.TransactionSearchRequest;
 import com.example.finance_app.dto.response.TransactionListResponse;
 import com.example.finance_app.entity.Transaction;
+import com.example.finance_app.security.CurrentUser;
 import com.example.finance_app.service.TransactionService;
 
 @RestController
@@ -29,8 +29,10 @@ public class TransactionController {
     private TransactionService transactionService;
 
     @PostMapping("/add/transaction")
-    public ResponseEntity<Transaction> createTransaction(@RequestBody TransactionRequest req) {
+    public ResponseEntity<Transaction> createTransaction(@RequestBody TransactionRequest req,
+            @CurrentUser Long userId) {
         try {
+            req.setUserId(userId);
             return ResponseEntity.ok(transactionService.createTransaction(req));
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
@@ -39,9 +41,9 @@ public class TransactionController {
 
     // Delete Transaction
     @PostMapping("/transactions/delete/{id}")
-    public ResponseEntity<String> deleteTransaction(@PathVariable Long id) {
+    public ResponseEntity<String> deleteTransaction(@PathVariable Long id, @CurrentUser Long userId) {
         try {
-            transactionService.deleteTrasaction(id);
+            transactionService.deleteTrasaction(id, userId);
             return ResponseEntity.ok("ลบรายการ (Soft Delete) เรียบร้อยแล้ว");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -50,9 +52,9 @@ public class TransactionController {
 
     // Update Transaction
     @PostMapping("/transaction/update")
-    public ResponseEntity<?> updateTransaction(@RequestBody Transaction updateData) {
+    public ResponseEntity<?> updateTransaction(@RequestBody Transaction updateData, @CurrentUser Long userId) {
         try {
-            Transaction result = transactionService.updateTransaction(updateData.getId(), updateData);
+            Transaction result = transactionService.updateTransaction(updateData.getId(), updateData, userId);
 
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
@@ -64,9 +66,8 @@ public class TransactionController {
 
     // Get list Transaction
     @PostMapping("/transactions/list")
-    public ResponseEntity<?> getTransactionList(@RequestBody Map<String, Long> payload) {
+    public ResponseEntity<?> getTransactionList(@CurrentUser Long userId) {
         try {
-            Long userId = payload.get("userId");
             List<TransactionListResponse> result = transactionService.getListTransaction(userId);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
@@ -76,8 +77,10 @@ public class TransactionController {
 
     // Search + filter + sort + pagination (หน้าประวัติธุรกรรม)
     @PostMapping("/transactions/search")
-    public ResponseEntity<?> searchTransactions(@RequestBody TransactionSearchRequest req) {
+    public ResponseEntity<?> searchTransactions(@RequestBody TransactionSearchRequest req,
+            @CurrentUser Long userId) {
         try {
+            req.setUserId(userId);
             return ResponseEntity.ok(transactionService.searchTransactions(req));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -86,9 +89,10 @@ public class TransactionController {
 
     // ลบหลายรายการพร้อมกัน (soft delete)
     @PostMapping("/transactions/delete-batch")
-    public ResponseEntity<String> deleteTransactionsBatch(@RequestBody BulkDeleteRequest req) {
+    public ResponseEntity<String> deleteTransactionsBatch(@RequestBody BulkDeleteRequest req,
+            @CurrentUser Long userId) {
         try {
-            int deleted = transactionService.bulkDeleteTransactions(req.getIds(), req.getUserId());
+            int deleted = transactionService.bulkDeleteTransactions(req.getIds(), userId);
             return ResponseEntity.ok("ลบ " + deleted + " รายการเรียบร้อยแล้ว");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

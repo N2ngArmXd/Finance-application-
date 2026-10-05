@@ -2,6 +2,8 @@ package com.example.finance_app.entity;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -22,6 +24,8 @@ public class Users {
     @Column(unique = true, nullable = false)
     private String username;
 
+    // ไม่ส่งออกไปใน JSON เด็ดขาด (entity นี้ติดไปกับ Transaction ตอนตอบกลับ)
+    @JsonIgnore
     @Column(nullable = false)
     private String password;
 

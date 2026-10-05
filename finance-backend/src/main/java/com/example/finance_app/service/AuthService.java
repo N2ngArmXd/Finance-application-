@@ -15,6 +15,7 @@ import com.example.finance_app.dto.request.RegisterRequest;
 import com.example.finance_app.dto.response.AuthResponse;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.UsersRepository;
+import com.example.finance_app.security.PasswordCipher;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -35,6 +36,9 @@ public class AuthService {
 
     @Autowired
     private InputSanitizer sanitizer;
+
+    @Autowired
+    private PasswordCipher passwordCipher;
 
     // ====================== Login ======================
 
@@ -61,16 +65,35 @@ public class AuthService {
     }
 
     /**
-     * เทียบรหัสผ่าน — รหัสใน DB เก็บเป็น text (ตามที่ตกลงกันไว้ ไม่ใช้ hash)
-     * ใช้ MessageDigest.isEqual (constant-time) แทน equals กันการเดารหัสจากเวลาที่ใช้เทียบ
+     * เทียบรหัสผ่าน — รหัสใน DB เข้ารหัสด้วย AES (ถอดได้ด้วย key ใน .env) ดู PasswordCipher
+     * ถ้าเจอแถวที่ยังเป็น text (เช่น แก้มือใน DB หลัง migration ตอน start) → เทียบตรงๆ แล้วเข้ารหัสทับทันที
      */
     private boolean passwordMatches(Users user, String rawPassword) {
         String stored = user.getPassword();
         if (stored == null) return false;
 
-        return MessageDigest.isEqual(
+        if (passwordCipher.isEncrypted(stored)) {
+            return passwordCipher.matches(rawPassword, stored);
+        }
+
+        boolean matches = MessageDigest.isEqual(
                 stored.getBytes(StandardCharsets.UTF_8),
                 rawPassword.getBytes(StandardCharsets.UTF_8));
+        if (matches) {
+            user.setPassword(passwordCipher.encrypt(rawPassword));
+            usersRepository.save(user);
+        }
+        return matches;
+    }
+
+    /** ข้อมูลผู้ใช้ที่ login อยู่ — ใช้ตอนเปิดแอปใหม่เพื่อเช็คว่า cookie ยังใช้ได้ */
+    public AuthResponse currentUser(Long userId) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
+        AuthResponse res = new AuthResponse();
+        res.setId(user.getId());
+        res.setUsername(user.getUsername());
+        return res;
     }
 
     // ====================== Register ======================
@@ -108,7 +131,7 @@ public class AuthService {
         Users user = new Users();
         user.setId(generateUnique13DigitId());
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordCipher.encrypt(request.getPassword()));
         user.setEmail(request.getEmail());
 
         user.setUserPrefix(request.getUserPrefix());
