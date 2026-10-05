@@ -363,6 +363,10 @@ public class TransactionService {
                 totalSavingOut = totalSavingOut.add(sum);
             }
         }
+        // ถอนไปใช้ = เงินออกจากกระปุกเหมือนกัน (บันทึกเป็นรายจ่าย ไม่มีรายการ SAVING_OUT คู่)
+        // ไม่บวกส่วนนี้ ยอดออมจะไม่ลด และสุทธิจะถูกหักซ้ำทั้งรายจ่ายและเงินออม
+        totalSavingOut = totalSavingOut.add(transactionRepository.sumSavingsSpend(
+                req.getUserId(), search, type, categoryId, dateFrom, dateTo));
 
         TransactionPageResponse response = new TransactionPageResponse(
                 content,
