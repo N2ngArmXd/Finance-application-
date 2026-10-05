@@ -1,5 +1,6 @@
 package com.example.finance_app.repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -71,6 +72,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     // ยอดรวมแยกตามประเภท (INCOME/EXPENSE) ของทั้งชุดที่ตรงเงื่อนไข -> [type, sum]
     @Query("SELECT c.type, SUM(t.amount) FROM Transaction t JOIN t.categoryId c " + FILTER + " GROUP BY c.type")
     List<Object[]> sumByType(
+            @Param("userId") Long userId,
+            @Param("search") String search,
+            @Param("type") String type,
+            @Param("categoryId") Long categoryId,
+            @Param("dateFrom") LocalDateTime dateFrom,
+            @Param("dateTo") LocalDateTime dateTo);
+
+    // ยอดรายจ่ายที่ใช้เงินจากกระปุก (ถอนไปใช้) ในชุดเดียวกัน — นับเป็นการถอนเงินออมด้วย
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t JOIN t.categoryId c " + FILTER
+            + " AND c.type = 'EXPENSE' AND t.savingsMovementId IS NOT NULL")
+    BigDecimal sumSavingsSpend(
             @Param("userId") Long userId,
             @Param("search") String search,
             @Param("type") String type,
