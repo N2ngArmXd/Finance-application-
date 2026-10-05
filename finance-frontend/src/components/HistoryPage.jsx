@@ -20,17 +20,35 @@ const SORT_OPTIONS = [
     { key: 'amount', direction: 'asc', label: 'ยอด น้อย → มาก' },
 ];
 
-// ช่วงวันที่ลัด (คืน [from, to] เป็น YYYY-MM-DD)
+// ช่วงวันที่ลัด (คืน [from, to] เป็น YYYY-MM-DD) · summary = ป้ายบนการ์ดสรุปยอด
 const datePresets = () => {
     const now = new Date();
     const y = now.getFullYear();
-    const m = now.getMonth();
     return [
-        { id: 'thisMonth', label: 'เดือนนี้', range: [toDateInput(new Date(y, m, 1)), toDateInput(new Date(y, m + 1, 0))] },
-        { id: 'lastMonth', label: 'เดือนก่อน', range: [toDateInput(new Date(y, m - 1, 1)), toDateInput(new Date(y, m, 0))] },
-        { id: 'last30', label: '30 วัน', range: [toDateInput(new Date(Date.now() - 29 * 86400000)), toDateInput(now)] },
-        { id: 'thisYear', label: 'ปีนี้', range: [toDateInput(new Date(y, 0, 1)), toDateInput(new Date(y, 11, 31))] },
+        { id: 'last30', label: '30 วัน', summary: 'ยอด 30 วันล่าสุด', range: [toDateInput(new Date(Date.now() - 29 * 86400000)), toDateInput(now)] },
+        { id: 'thisYear', label: 'ปีนี้', summary: 'ยอดปีนี้', range: [toDateInput(new Date(y, 0, 1)), toDateInput(new Date(y, 11, 31))] },
     ];
+};
+
+// เดือนนับจากเดือนปัจจุบัน (0 = เดือนนี้, -1 = เดือนก่อน)
+const monthStart = (offset) => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + offset, 1);
+};
+const monthRange = (offset) => {
+    const d = monthStart(offset);
+    return [toDateInput(d), toDateInput(new Date(d.getFullYear(), d.getMonth() + 1, 0))];
+};
+const monthLabel = (offset) =>
+    monthStart(offset).toLocaleDateString('th-TH-u-ca-buddhist', { month: 'short', year: 'numeric' });
+
+// ช่วงวันที่ที่ตรงกับเดือนเต็ม (วันที่ 1 – วันสุดท้าย) -> offset ของเดือนนั้น ไม่ตรงคืน null
+const monthOffsetOf = (from, to) => {
+    if (!from || !to) return null;
+    const [y, m, d] = from.split('-').map(Number);
+    if (d !== 1 || toDateInput(new Date(y, m, 0)) !== to) return null;
+    const now = new Date();
+    return (y - now.getFullYear()) * 12 + (m - 1 - now.getMonth());
 };
 
 // ออมสุทธิ (ฝาก − ถอนเงินออม) จากผล search
@@ -41,11 +59,12 @@ const TYPE_LABELS = { INCOME: 'รายรับ', EXPENSE: 'รายจ่า
 // [วันนี้, เมื่อวาน] เป็น YYYY-MM-DD ใช้ทำป้ายหัวกลุ่มวัน
 const relativeDayKeys = () => [toDateInput(new Date()), toDateInput(new Date(Date.now() - 86400000))];
 
+const chipTone = (on) => (on
+    ? 'bg-brand-50 text-brand-700 font-semibold ring-1 ring-inset ring-brand-300'
+    : 'bg-white text-slate-700 font-medium ring-1 ring-inset ring-slate-200');
+
 const presetChip = (on) =>
-    `h-9 px-3.5 rounded-full text-sm flex items-center gap-1.5 transition-colors ${on
-        ? 'bg-brand-50 text-brand-700 font-semibold ring-1 ring-inset ring-brand-300'
-        : 'bg-white text-slate-700 font-medium ring-1 ring-inset ring-slate-200 hover:bg-slate-50'
-    }`;
+    `h-9 px-3.5 rounded-full text-sm flex items-center gap-1.5 transition-colors ${chipTone(on)} ${on ? '' : 'hover:bg-slate-50'}`;
 
 const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
     const [categories, setCategories] = useState([]);
@@ -95,6 +114,8 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
     const presets = useMemo(() => datePresets(), []);
     const [todayKey, yesterdayKey] = useMemo(() => relativeDayKeys(), []);
     const activePreset = presets.find((p) => p.range[0] === filterStart && p.range[1] === filterEnd);
+    const activeMonth = monthOffsetOf(filterStart, filterEnd);
+    const shownMonth = activeMonth ?? 0; // ยังไม่ได้เลือกเดือน -> ตัวเลือกเดือนแสดงเดือนปัจจุบัน
     const hasDateFilter = !!(filterStart || filterEnd);
 
     // debounce ช่องค้นหา 400ms
@@ -315,6 +336,11 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
         setFilterEnd(to);
     };
 
+    const pickMonth = (offset) => {
+        setShowCustomDate(false);
+        setDateRange(...monthRange(offset));
+    };
+
     const clearFilters = () => {
         resetToFirstPage();
         setFilterType('ALL');
@@ -334,13 +360,22 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
     const categoryName = categories.find((c) => String(c.id) === String(filterCategory))?.name;
     const dateChipLabel = activePreset
         ? activePreset.label
-        : `${filterStart ? formatDayLabel(filterStart) : 'เริ่มต้น'} – ${filterEnd ? formatDayLabel(filterEnd) : 'ปัจจุบัน'}`;
+        : activeMonth != null
+            ? `เดือน ${monthLabel(activeMonth)}`
+            : `${filterStart ? formatDayLabel(filterStart) : 'เริ่มต้น'} – ${filterEnd ? formatDayLabel(filterEnd) : 'ปัจจุบัน'}`;
     const chips = [
         filterType !== 'ALL' && { key: 'type', label: TYPE_LABELS[filterType], remove: () => { resetToFirstPage(); setFilterType('ALL'); } },
         filterCategory !== 'ALL' && { key: 'cat', label: categoryName || 'หมวดหมู่', remove: () => { resetToFirstPage(); setFilterCategory('ALL'); } },
         hasDateFilter && { key: 'date', label: dateChipLabel, remove: () => { setDateRange('', ''); setShowCustomDate(false); } },
     ].filter(Boolean);
     const hasQuery = chips.length > 0 || debouncedSearch.trim() !== '';
+
+    // ป้ายการ์ดสรุป: บอกว่ายอดที่เห็นเป็นของช่วงไหน
+    const summaryLabel = !hasDateFilter ? 'ยอดทั้งหมด'
+        : activePreset ? activePreset.summary
+            : activeMonth != null ? `ยอดเดือน ${monthLabel(activeMonth)}`
+                : `ยอด ${dateChipLabel}`;
+    const hasOtherFilter = filterType !== 'ALL' || filterCategory !== 'ALL' || debouncedSearch.trim() !== '';
 
     // จัดกลุ่มรายการในหน้านี้ตามวัน (เฉพาะตอนเรียงตามวันที่)
     const groups = useMemo(() => {
@@ -417,6 +452,31 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                 {/* มือถือ: ประเภทเต็มแถวอยู่บน, ช่วงวันที่ + หมวดหมู่เป็นแถวเลื่อนแนวนอน · sm ขึ้นไป: เรียงต่อกันแถวเดียวเหมือนเดิม */}
                 <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
                     <div className="flex gap-2 overflow-x-auto -mx-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>*]:shrink-0 sm:contents">
+                        {/* เลือกเดือน: กดชื่อเดือนเพื่อกรอง · ลูกศรเลื่อนเดือน (ไปเดือนอนาคตไม่ได้) */}
+                        <div className={`h-9 rounded-full text-sm flex items-center transition-colors ${chipTone(activeMonth != null)}`}>
+                            <button
+                                onClick={() => pickMonth(shownMonth - 1)}
+                                aria-label="เดือนก่อนหน้า"
+                                className="w-8 h-9 rounded-l-full flex items-center justify-center hover:bg-slate-900/5"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <button
+                                onClick={() => pickMonth(shownMonth)}
+                                aria-pressed={activeMonth != null}
+                                className="h-9 px-1 min-w-[76px] text-center whitespace-nowrap"
+                            >
+                                {monthLabel(shownMonth)}
+                            </button>
+                            <button
+                                onClick={() => pickMonth(shownMonth + 1)}
+                                disabled={shownMonth >= 0}
+                                aria-label="เดือนถัดไป"
+                                className="w-8 h-9 rounded-r-full flex items-center justify-center hover:bg-slate-900/5 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
                         {presets.map((p) => (
                             <button
                                 key={p.id}
@@ -428,7 +488,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                         ))}
                         <button
                             onClick={() => setShowCustomDate((s) => !s)}
-                            className={presetChip(showCustomDate || (hasDateFilter && !activePreset))}
+                            className={presetChip(showCustomDate || (hasDateFilter && !activePreset && activeMonth == null))}
                         >
                             <Calendar size={16} /> กำหนดเอง
                         </button>
@@ -534,7 +594,11 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                 </div>
                 <div className="col-span-2 sm:col-span-1 flex flex-col gap-2">
                     <div className="flex justify-between gap-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1.5"><Filter size={14} />ตามตัวกรองที่เลือก</span>
+                        <span className="flex items-center gap-1.5">
+                            {hasDateFilter ? <Calendar size={14} /> : <Filter size={14} />}
+                            <span className="font-semibold text-slate-600">{summaryLabel}</span>
+                            {hasOtherFilter && <span>· ตามตัวกรอง</span>}
+                        </span>
                         {totalIncome > 0 && (
                             <span className={netAmount < 0 ? 'font-semibold text-expense-700' : ''}>
                                 จ่ายไป {Math.round((totalExpense / totalIncome) * 100)}% ของรายรับ
