@@ -80,7 +80,7 @@ const dialogProps = (d) => {
     };
 };
 
-export default function Installments({ userId, focusId, onFocusHandled }) {
+export default function Installments({ focusId, onFocusHandled }) {
     const [installmentsList, setInstallmentsList] = useState([]);
     const [fetching, setFetching] = useState(true);
     const [expandedId, setExpandedId] = useState(null);
@@ -101,8 +101,6 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
         try {
             const response = await fetch('/api/finance-app/installments/list', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
             });
             if (response.ok) {
                 setInstallmentsList(await response.json());
@@ -112,11 +110,11 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
         } finally {
             setFetching(false);
         }
-    }, [userId]);
+    }, []);
 
     useEffect(() => {
-        if (userId) fetchInstallments();
-    }, [userId, fetchInstallments]);
+        fetchInstallments();
+    }, [fetchInstallments]);
 
     // แยกรายการที่ผ่อนเสร็จแล้วออกจากรายการที่ยังผ่อนอยู่
     const activeInstallments = useMemo(() => installmentsList.filter((item) => !isInstallmentCompleted(item)), [installmentsList]);
@@ -189,7 +187,6 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
     // ฟอร์มกดบันทึก → dialog ยืนยัน
     const handleFormSubmit = (values, preview) => {
         const payload = {
-            userId,
             installmentsName: values.installmentsName,
             description: values.description,
             totalAmount: parseFloat(values.totalAmount),
@@ -220,7 +217,7 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
         const response = await fetch('/api/finance-app/installments/close', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ installmentsId: item.installmentsId, userId })
+            body: JSON.stringify({ installmentsId: item.installmentsId })
         });
         if (!response.ok) throw new Error(await errorText(response, 'ปิดยอดไม่สำเร็จ · กรุณาลองใหม่อีกครั้ง'));
         if (expandedId === item.installmentsId) setExpandedId(null);
@@ -233,7 +230,7 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
         const response = await fetch('/api/finance-app/installments/delete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ installmentsId: item.installmentsId, userId })
+            body: JSON.stringify({ installmentsId: item.installmentsId })
         });
         if (!response.ok) throw new Error(await errorText(response, 'ลบไม่สำเร็จ · กรุณาลองใหม่อีกครั้ง'));
         if (expandedId === item.installmentsId) setExpandedId(null);
@@ -251,7 +248,6 @@ export default function Installments({ userId, focusId, onFocusHandled }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     installmentsId: d.item.installmentsId,
-                    userId,
                     period: d.row.month,
                     paid: markingPaid
                 })

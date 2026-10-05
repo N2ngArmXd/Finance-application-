@@ -14,7 +14,7 @@ const escapeHtml = (s) =>
 // โฟกัสช่องยอดเงินอัตโนมัติเฉพาะเครื่องที่ใช้เมาส์ (จอสัมผัสคีย์บอร์ดจะเด้งบังหน้าทันที)
 const canAutoFocus = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches;
 
-export default function TransactionPage({ userId, onNavigate }) {
+export default function TransactionPage({ onNavigate }) {
     const [categories, setCategories] = useState([]);
     const [selectedType, setSelectedType] = useState('EXPENSE'); // เลือกประเภทก่อน default = รายจ่าย
     const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -48,12 +48,9 @@ export default function TransactionPage({ userId, onNavigate }) {
     };
 
     const fetchRecent = async () => {
-        if (!userId) return;
         try {
             const res = await fetch('/api/finance-app/transactions/list', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: String(userId) }),
             });
             if (res.ok) setRecent(await res.json());
         } catch (e) {
@@ -64,7 +61,7 @@ export default function TransactionPage({ userId, onNavigate }) {
     useEffect(() => {
         fetchCategories();
         fetchRecent();
-    }, [userId]);
+    }, []);
 
     // รายการวันนี้ (ใหม่ → เก่า) + ยอดรวม (net)
     const todayItems = useMemo(
@@ -141,7 +138,6 @@ export default function TransactionPage({ userId, onNavigate }) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId,
                     categoryId: selectedCategoryId,
                     amount: amountNum,
                     description,

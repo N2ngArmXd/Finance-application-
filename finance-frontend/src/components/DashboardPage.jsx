@@ -33,7 +33,7 @@ const percentChange = (current, previous) => {
     return ((current - previous) / previous) * 100;
 };
 
-export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings }) {
+export default function DashboardPage({ onOpenInstallment, onOpenSavings }) {
     const thisMonth = toMonthKey(new Date());
     const [month, setMonth] = useState(thisMonth);
     const [data, setData] = useState(null);
@@ -45,7 +45,7 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
             const response = await fetch('/api/finance-app/dashboard/summary', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, month })
+                body: JSON.stringify({ month })
             });
             if (response.ok) {
                 setData(await response.json());
@@ -61,8 +61,8 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
     };
 
     useEffect(() => {
-        if (userId) fetchSummary();
-    }, [userId, month]);
+        fetchSummary();
+    }, [month]);
 
     return (
         <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
@@ -108,7 +108,7 @@ export default function DashboardPage({ userId, onOpenInstallment, onOpenSavings
                         <ExpenseByCategory items={data.expenseByCategory} total={data.totalExpense} />
                         <InstallmentsDue data={data} onOpen={onOpenInstallment} />
                     </div>
-                    <SavingsOverview data={data} userId={userId} onOpen={onOpenSavings} />
+                    <SavingsOverview data={data} onOpen={onOpenSavings} />
                 </div>
             )}
         </div>
@@ -272,15 +272,14 @@ function SeeAllLink({ onClick, label }) {
 const TOP_GOALS = 3;
 
 // เงินออม: ยอดรวม ณ สิ้นเดือนที่เลือก + ออมเดือนนี้ + กระปุก (ยอดปัจจุบัน) 3 ใบแรก
-function SavingsOverview({ data, userId, onOpen }) {
+function SavingsOverview({ data, onOpen }) {
     const [goals, setGoals] = useState(null);
 
     useEffect(() => {
-        if (!userId) return;
-        savingsApi('list', { userId })
+        savingsApi('list')
             .then((list) => setGoals((list || []).filter((g) => g.status !== 'ARCHIVED')))
             .catch(() => setGoals([]));
-    }, [userId]);
+    }, []);
 
     // กระปุกที่ใกล้เป้าที่สุดขึ้นก่อน (ไม่มีเป้าไว้ท้าย)
     const top = (goals || [])

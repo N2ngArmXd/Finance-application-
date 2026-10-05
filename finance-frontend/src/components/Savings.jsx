@@ -80,7 +80,7 @@ const dialogProps = (d) => {
     };
 };
 
-export default function Savings({ userId, focusId, onFocusHandled }) {
+export default function Savings({ focusId, onFocusHandled }) {
     const [goals, setGoals] = useState([]);
     const [summary, setSummary] = useState(null);
     const [categories, setCategories] = useState([]);
@@ -100,11 +100,11 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
         setFetching(true);
         try {
             const [list, dash] = await Promise.all([
-                savingsApi('list', { userId }),
+                savingsApi('list'),
                 fetch('/api/finance-app/dashboard/summary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, month: thisMonthKey() }),
+                    body: JSON.stringify({ month: thisMonthKey() }),
                 }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
             ]);
             setGoals(list || []);
@@ -114,21 +114,18 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
         } finally {
             setFetching(false);
         }
-    }, [userId, showToast]);
+    }, [showToast]);
 
     useEffect(() => {
-        if (userId) fetchAll();
-    }, [userId, fetchAll]);
+        fetchAll();
+    }, [fetchAll]);
 
     // หมวดหมู่รายจ่าย ใช้ตอนถอนไปใช้จ่าย
     useEffect(() => {
-        if (!userId) return;
         fetch('/api/finance-app/categories/getCategoriesList', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: String(userId) }),
         }).then((r) => (r.ok ? r.json() : [])).then(setCategories).catch(() => setCategories([]));
-    }, [userId]);
+    }, []);
 
     const activeGoals = useMemo(() => goals.filter((g) => g.status !== 'ARCHIVED'), [goals]);
     const archivedGoals = useMemo(() => goals.filter((g) => g.status === 'ARCHIVED'), [goals]);
@@ -175,7 +172,6 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
 
     const saveGoal = async (values) => {
         const payload = {
-            userId,
             name: values.name.trim(),
             description: values.description.trim() || null,
             targetAmount: values.hasTarget ? parseFloat(values.targetAmount) : null,
@@ -198,7 +194,7 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
 
     const reopenGoal = async (g) => {
         try {
-            await savingsApi('reopen', { userId, savingsGoalId: g.savingsGoalId });
+            await savingsApi('reopen', { savingsGoalId: g.savingsGoalId });
             await afterChange(`เปิดใช้กระปุก "${g.name}" อีกครั้งแล้ว`);
         } catch (error) {
             showToast(error.message, 'error');
@@ -232,7 +228,6 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
             // วันที่ไม่เปลี่ยน -> ส่งเวลาเดิมกลับไป
             const sameDay = toDateInput(new Date(movement.movementDate)) === values.date;
             await savingsApi('movement/update', {
-                userId,
                 savingsMovementId: movement.savingsMovementId,
                 amount,
                 movementDate: sameDay ? movement.movementDate : toMovementDateTime(values.date, movement.movementDate.slice(11, 19)),
@@ -241,7 +236,7 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
             });
             return 'บันทึกการแก้ไขรายการแล้ว';
         }
-        const base = { userId, savingsGoalId: d.goal.savingsGoalId, amount, movementDate: toMovementDateTime(values.date), note };
+        const base = { savingsGoalId: d.goal.savingsGoalId, amount, movementDate: toMovementDateTime(values.date), note };
         if (d.movementKind === 'deposit') {
             await savingsApi('deposit', base);
             return `ฝาก ${money(amount)} เข้า "${d.goal.name}" แล้ว`;
@@ -262,15 +257,15 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
                 message = await runMovement(d);
                 setMovementForm(null);
             } else if (d.kind === 'deleteMovement') {
-                await savingsApi('movement/delete', { userId, savingsMovementId: d.movement.savingsMovementId });
+                await savingsApi('movement/delete', { savingsMovementId: d.movement.savingsMovementId });
                 message = d.movement.mode === 'SPEND' ? 'ลบรายการถอนและรายจ่ายที่ผูกอยู่แล้ว' : 'ลบรายการแล้ว';
             } else if (d.kind === 'archive') {
-                await savingsApi('archive', { userId, savingsGoalId: d.goal.savingsGoalId, withdrawAll: d.goal.balance > 0 });
+                await savingsApi('archive', { savingsGoalId: d.goal.savingsGoalId, withdrawAll: d.goal.balance > 0 });
                 if (detailId === d.goal.savingsGoalId) setDetailId(null);
                 setShowArchived(true);
                 message = `ปิดกระปุก "${d.goal.name}" แล้ว`;
             } else {
-                await savingsApi('delete', { userId, savingsGoalId: d.goal.savingsGoalId });
+                await savingsApi('delete', { savingsGoalId: d.goal.savingsGoalId });
                 if (detailId === d.goal.savingsGoalId) setDetailId(null);
                 message = `ลบกระปุก "${d.goal.name}" แล้ว`;
             }
@@ -426,7 +421,6 @@ export default function Savings({ userId, focusId, onFocusHandled }) {
             {detailGoal && (
                 <GoalDetail
                     goal={detailGoal}
-                    userId={userId}
                     reloadKey={historyKey}
                     paused={!!dialog || !!movementForm}
                     onClose={closeDetail}

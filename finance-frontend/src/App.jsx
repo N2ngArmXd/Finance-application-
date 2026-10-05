@@ -88,25 +88,23 @@ function App() {
         {/* Content Section — มือถือเว้นที่ด้านล่างให้ BottomNav */}
         <main className="px-4 pt-4 pb-bottom-nav md:px-6 md:pt-6 lg:p-8">
           {activePage === 'dashboard' && (
-            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
+            <DashboardPage onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
           )}
 
           {activePage === 'transaction' && (
-            <TransactionPage userId={user.id} onNavigate={setActivePage} />
+            <TransactionPage onNavigate={setActivePage} />
           )}
           {activePage === 'history' && (
-            <HistoryPage userId={user.id} onNavigate={setActivePage} onOpenSavings={openSavings} />
+            <HistoryPage onNavigate={setActivePage} onOpenSavings={openSavings} />
           )}
           {activePage === 'savings' && (
             <Savings
-              userId={user.id}
               focusId={savingsFocusId}
               onFocusHandled={() => setSavingsFocusId(null)}
             />
           )}
           {activePage === 'installment' && (
             <Installments
-              userId={user.id}
               focusId={installmentFocusId}
               onFocusHandled={() => setInstallmentFocusId(null)}
             />

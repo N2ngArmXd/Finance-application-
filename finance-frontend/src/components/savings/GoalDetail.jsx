@@ -18,7 +18,7 @@ const MODE = {
 
 // drawer รายละเอียดกระปุก + ประวัติฝาก-ถอน
 // reloadKey เปลี่ยน = โหลดประวัติใหม่ (หลังฝาก/ถอน/แก้/ลบ) · paused = มี modal/dialog ซ้อนอยู่
-export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, onDeposit, onWithdraw, onEditMovement, onDeleteMovement }) {
+export default function GoalDetail({ goal, reloadKey, paused, onClose, onDeposit, onWithdraw, onEditMovement, onDeleteMovement }) {
     const [items, setItems] = useState([]);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
@@ -29,7 +29,7 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
         setLoading(true);
         setError(false);
         try {
-            const data = await savingsApi('movements', { userId, savingsGoalId: goal.savingsGoalId, page: p, size: PAGE_SIZE });
+            const data = await savingsApi('movements', { savingsGoalId: goal.savingsGoalId, page: p, size: PAGE_SIZE });
             setItems((cur) => (p === 1 ? data.content : [...cur, ...data.content]));
             setPage(p);
             setTotalPages(data.totalPages || 1);
@@ -38,7 +38,7 @@ export default function GoalDetail({ goal, userId, reloadKey, paused, onClose, o
         } finally {
             setLoading(false);
         }
-    }, [userId, goal.savingsGoalId]);
+    }, [goal.savingsGoalId]);
 
     useEffect(() => { load(1); }, [load, reloadKey]);
 

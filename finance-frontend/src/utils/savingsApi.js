@@ -1,5 +1,6 @@
 // เรียก API เงินออม — error ทางธุรกิจ backend ตอบ 400 พร้อมข้อความภาษาไทย ให้โยนเป็น Error(ข้อความ)
-export async function savingsApi(path, body) {
+// ไม่ต้องส่ง userId — backend ใช้ของคนที่ login อยู่ (JWT)
+export async function savingsApi(path, body = {}) {
     let response;
     try {
         response = await fetch(`/api/finance-app/savings/${path}`, {
