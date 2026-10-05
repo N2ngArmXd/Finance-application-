@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.InstallmentsRequest;
 import com.example.finance_app.entity.InstallmentsEntity;
+import com.example.finance_app.security.CurrentUser;
 import com.example.finance_app.service.InstallmentService;
 
 @RestController
@@ -25,15 +26,16 @@ public class InstallmentController {
     private InstallmentService installmentService;
 
     @PostMapping("/create/installments")
-    public ResponseEntity<InstallmentsEntity> createInstallments(@RequestBody InstallmentsRequest request) {
+    public ResponseEntity<InstallmentsEntity> createInstallments(@RequestBody InstallmentsRequest request,
+            @CurrentUser Long userId) {
+        request.setUserId(userId);
         InstallmentsEntity installments = installmentService.createdInstallments(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(installments);
     }
 
     @PostMapping("/installments/list")
-    public ResponseEntity<?> getInstallmentsList(@RequestBody Map<String, Long> payload) {
+    public ResponseEntity<?> getInstallmentsList(@CurrentUser Long userId) {
         try {
-            Long userId = payload.get("userId");
             List<InstallmentsEntity> result = installmentService.getListInstallments(userId);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
@@ -42,8 +44,10 @@ public class InstallmentController {
     }
 
     @PostMapping("/installments/update")
-    public ResponseEntity<?> updateInstallments(@RequestBody InstallmentsRequest request) {
+    public ResponseEntity<?> updateInstallments(@RequestBody InstallmentsRequest request,
+            @CurrentUser Long userId) {
         try {
+            request.setUserId(userId);
             InstallmentsEntity result = installmentService.updateInstallments(request);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
@@ -52,10 +56,10 @@ public class InstallmentController {
     }
 
     @PostMapping("/installments/delete")
-    public ResponseEntity<?> deleteInstallments(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> deleteInstallments(@RequestBody Map<String, Object> payload,
+            @CurrentUser Long userId) {
         try {
             Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
-            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
             installmentService.softDeleteInstallments(installmentsId, userId);
             return ResponseEntity.ok("ลบรายการ (Soft Delete) เรียบร้อยแล้ว");
         } catch (RuntimeException e) {
@@ -64,10 +68,10 @@ public class InstallmentController {
     }
 
     @PostMapping("/installments/pay-period")
-    public ResponseEntity<?> payInstallmentPeriod(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> payInstallmentPeriod(@RequestBody Map<String, Object> payload,
+            @CurrentUser Long userId) {
         try {
             Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
-            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
             int period = Integer.parseInt(payload.get("period").toString());
             boolean paid = payload.get("paid") == null || Boolean.parseBoolean(payload.get("paid").toString());
             InstallmentsEntity result = installmentService.updatePaidPeriod(installmentsId, userId, period, paid);
@@ -79,10 +83,10 @@ public class InstallmentController {
 
     // ปิดยอดรายการผ่อน (status = CLOSED + log วันที่ปิด)
     @PostMapping("/installments/close")
-    public ResponseEntity<?> closeInstallment(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<?> closeInstallment(@RequestBody Map<String, Object> payload,
+            @CurrentUser Long userId) {
         try {
             Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
-            Long userId = payload.get("userId") != null ? Long.valueOf(payload.get("userId").toString()) : null;
             InstallmentsEntity result = installmentService.closeInstallment(installmentsId, userId);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {

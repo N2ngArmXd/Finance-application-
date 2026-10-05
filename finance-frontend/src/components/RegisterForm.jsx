@@ -1,102 +1,231 @@
 import React, { useState } from 'react';
-import { User, Lock, Mail, Phone, Home, ArrowRight, ArrowLeft, Wallet, PartyPopper } from 'lucide-react';
+import { User, Lock, Mail, Phone, ArrowRight, ArrowLeft, Wallet, PartyPopper, Eye, EyeOff, Check } from 'lucide-react';
 import Swal from 'sweetalert2';
+import { PREFIXES, filters, formatPhone, validators, passwordStrength, cleanText } from '../utils/inputRules';
+
+const STEPS = [
+    { label: 'บัญชี', title: 'สร้างบัญชีของคุณ', subtitle: 'เริ่มต้นจัดการการเงินของคุณได้ง่ายๆ' },
+    { label: 'ข้อมูลส่วนตัว', title: 'ข้อมูลส่วนตัว', subtitle: 'บอกเราสักนิดว่าคุณคือใคร' },
+    { label: 'ที่อยู่', title: 'ข้อมูลที่อยู่', subtitle: 'ข้อมูลสำหรับติดต่อและจัดส่งเอกสาร' },
+];
+
+// ฟิลด์ของแต่ละ step — ใช้ตรวจก่อนกดถัดไป และพาไป step ที่มี error ตอน backend ตีกลับ
+const STEP_FIELDS = {
+    1: ['username', 'email', 'password', 'confirmPassword'],
+    2: ['userPrefix', 'userFirstName', 'userLastName', 'userNickName', 'userPhone'],
+    3: ['houseNo', 'moo', 'alley', 'road', 'subDistrict', 'district', 'province', 'postalCode'],
+};
+
+// ตัดอักขระที่ไม่อนุญาตทิ้งตั้งแต่ตอนพิมพ์ — password ไม่กรอง (ช่องปิดตัวอักษร ถ้าตัดทิ้งเงียบๆ ผู้ใช้จะงง)
+const FIELD_FILTERS = {
+    username: filters.username,
+    email: filters.email,
+    userFirstName: filters.personName,
+    userLastName: filters.personName,
+    userNickName: filters.personName,
+    userPhone: formatPhone,
+    houseNo: filters.addressText,
+    moo: filters.digits,
+    alley: filters.addressText,
+    road: filters.addressText,
+    subDistrict: filters.placeName,
+    district: filters.placeName,
+    province: filters.placeName,
+    postalCode: filters.digits,
+};
+
+const STRENGTH = [
+    null,
+    { label: 'อ่อน', color: 'bg-expense-500', text: 'text-expense-500' },
+    { label: 'พอใช้', color: 'bg-amber-400', text: 'text-amber-500' },
+    { label: 'ดี', color: 'bg-income-500', text: 'text-income-500' },
+    { label: 'แข็งแรงมาก', color: 'bg-income-600', text: 'text-income-600' },
+];
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// ตารางสรุปข้อมูลใน popup ยืนยัน — escape ทุกค่าเพราะเป็นข้อความที่ผู้ใช้พิมพ์
+const confirmSummaryHtml = (d) => {
+    const address = [
+        d.houseNo,
+        d.moo && `หมู่ ${d.moo}`,
+        d.alley && `ซ. ${d.alley}`,
+        d.road && `ถ. ${d.road}`,
+        d.subDistrict, d.district, d.province, d.postalCode,
+    ].filter(Boolean).join(' ');
+    const rows = [
+        ['ชื่อผู้ใช้งาน', d.username],
+        ['อีเมล', d.email],
+        ['ชื่อ-นามสกุล', `${d.userPrefix}${d.userFirstName} ${d.userLastName}`],
+        ['ชื่อเล่น', d.userNickName],
+        ['เบอร์โทร', formatPhone(d.userPhone)],
+        ['ที่อยู่', address],
+    ];
+    return `<table style="width:100%;text-align:left;font-size:14px;border-collapse:collapse">${rows.map(([k, v]) =>
+        `<tr><td style="padding:6px 8px;color:#64748b;white-space:nowrap;vertical-align:top">${k}</td>` +
+        `<td style="padding:6px 8px;color:#1e293b;font-weight:600;word-break:break-word">${escapeHtml(v)}</td></tr>`).join('')}</table>`;
+};
+
+const inputClass = (hasError, extra = '') =>
+    `w-full px-5 py-3.5 bg-slate-50 border rounded-full outline-none focus:bg-white transition-all text-sm ${extra} ${hasError
+        ? 'border-expense-300 focus:ring-2 focus:ring-expense-500/20 focus:border-expense-500'
+        : 'border-slate-100 focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500'}`;
+
+function Field({ label, error, hint, optional, children }) {
+    return (
+        <div className="space-y-1.5">
+            <label className="block text-sm font-bold text-slate-600 ml-4">
+                {label}
+                {optional && <span className="ml-1 font-medium text-slate-400">(ไม่บังคับ)</span>}
+            </label>
+            {children}
+            {error
+                ? <p className="text-xs font-bold text-expense-500 ml-4">{error}</p>
+                : hint && <p className="text-xs text-slate-400 ml-4">{hint}</p>}
+        </div>
+    );
+}
+
+function IconInput({ icon, error, right, ...props }) {
+    return (
+        <div className="relative">
+            <div className="absolute left-5 inset-y-0 flex items-center pointer-events-none text-slate-400">
+                {React.createElement(icon, { size: 18 })}
+            </div>
+            <input {...props} className={inputClass(error, `pl-12 ${right ? 'pr-12' : ''}`)} />
+            {right}
+        </div>
+    );
+}
 
 export default function RegisterForm({ onGoToLogin }) {
 
     const [step, setStep] = useState(1);
-    const [userId, setUserId] = useState(null);
-    const [error, setError] = useState('');
+    const [errors, setErrors] = useState({});
+    const [formError, setFormError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     const [formData, setFormData] = useState({
         // Step 1
-        username: '', password: '', email: '',
+        username: '', email: '', password: '', confirmPassword: '',
         // Step 2
-        profileImage: '', userPrefix: '', userFirstName: '', userLastName: '', userNickname: '', userPhone: '',
+        userPrefix: '', userFirstName: '', userLastName: '', userNickName: '', userPhone: '',
         // Step 3
-        province: '', district: '', subDistrict: '', road: '', alley: '', moo: '', houseNo: '', postalCode: ''
+        houseNo: '', moo: '', alley: '', road: '', subDistrict: '', district: '', province: '', postalCode: ''
     });
 
-    const handleChange = async (e) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    }
+    const setField = (name, value) => {
+        setFormData(prev => ({ ...prev, [name]: value }));
+        // พิมพ์แก้แล้วเอา error ของช่องนั้นออก
+        if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        const filter = FIELD_FILTERS[name];
+        setField(name, filter ? filter(value) : value);
+    };
+
+    const validateStep = (s) => {
+        const stepErrors = {};
+        for (const field of STEP_FIELDS[s]) {
+            const message = field === 'confirmPassword'
+                ? (formData.confirmPassword !== formData.password ? 'รหัสผ่านไม่ตรงกัน' : '')
+                : validators[field](formData[field]);
+            if (message) stepErrors[field] = message;
+        }
+        return stepErrors;
+    };
+
+    const payload = () => ({
+        username: cleanText(formData.username),
+        email: cleanText(formData.email),
+        password: formData.password,
+        userPrefix: formData.userPrefix,
+        userFirstName: cleanText(formData.userFirstName),
+        userLastName: cleanText(formData.userLastName),
+        userNickName: cleanText(formData.userNickName),
+        userPhone: filters.digits(formData.userPhone),
+        houseNo: cleanText(formData.houseNo),
+        moo: cleanText(formData.moo),
+        alley: cleanText(formData.alley),
+        road: cleanText(formData.road),
+        subDistrict: cleanText(formData.subDistrict),
+        district: cleanText(formData.district),
+        province: cleanText(formData.province),
+        postalCode: cleanText(formData.postalCode),
+    });
+
+    const postJson = async (url, body) => {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        if (response.ok) return { ok: true };
+        if (response.status >= 500) {
+            const errorText = await response.text();
+            throw new Error(`Server Error (${response.status}): ${errorText}`);
+        }
+        const data = await response.json().catch(() => ({}));
+        return { ok: false, errors: data.errors || {}, message: data.message };
+    };
+
+    // backend ตีกลับ → แสดง error ใต้ช่อง และพากลับไป step แรกที่มีปัญหา
+    const showServerErrors = (serverErrors, message) => {
+        setErrors(serverErrors);
+        const firstStep = [1, 2, 3].find(s => STEP_FIELDS[s].some(f => serverErrors[f]));
+        if (firstStep) setStep(firstStep);
+        else setFormError(message || 'ข้อมูลไม่ถูกต้อง');
+    };
 
     const handleNext = async (e) => {
         e.preventDefault();
-        setError('');
-        setLoading(true);
+        setFormError('');
 
+        const stepErrors = validateStep(step);
+        setErrors(stepErrors);
+        if (Object.keys(stepErrors).length > 0) return;
+
+        setLoading(true);
         try {
             if (step === 1) {
-                // Call Step 1 API
-                const response = await fetch('/api/finance-app/register/step1', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: formData.username,
-                        password: formData.password,
-                        email: formData.email
-                    }),
-                });
-                if (!response.ok) {
-                    if (response.status >= 500) {
-                        const errorText = await response.text();
-                        throw new Error(`Server Error (${response.status}): ${errorText}`);
-                    }
-                    throw new Error('ไม่สามารถสร้างบัญชีได้ หรือชื่อผู้ใช้นี้มีคนใช้แล้ว');
-                }
-                const newUserId = await response.json();
-                setUserId(newUserId);
+                // เช็ค username/อีเมลซ้ำก่อนไปต่อ — ยังไม่สร้างบัญชี
+                const { username, email, password } = payload();
+                const result = await postJson('/api/finance-app/register/check', { username, email, password });
+                if (!result.ok) return showServerErrors(result.errors, result.message);
                 setStep(2);
 
             } else if (step === 2) {
-                if (!userId) throw new Error('เกิดข้อผิดพลาด: ไม่พบรหัสผู้ใช้');
-                // Call Step 2 API
-                const response = await fetch(`/api/finance-app/register/step2/${userId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userPrefix: formData.userPrefix,
-                        userFirstName: formData.userFirstName,
-                        userLastName: formData.userLastName,
-                        userNickName: formData.userNickname,
-                        userPhone: formData.userPhone
-                    }),
-                });
-                if (!response.ok) {
-                    if (response.status >= 500) {
-                        const errorText = await response.text();
-                        throw new Error(`Server Error (${response.status}): ${errorText}`);
-                    }
-                    throw new Error('ไม่สามารถบันทึกข้อมูลส่วนตัวได้');
-                }
                 setStep(3);
 
-            } else if (step === 3) {
-                if (!userId) throw new Error('เกิดข้อผิดพลาด: ไม่พบรหัสผู้ใช้');
-                // Call Step 3 API
-                const response = await fetch(`/api/finance-app/register/step3/${userId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        houseNo: formData.houseNo,
-                        moo: formData.moo,
-                        alley: formData.alley,
-                        road: formData.road,
-                        subDistrict: formData.subDistrict,
-                        district: formData.district,
-                        province: formData.province,
-                        postalCode: formData.postalCode
-                    }),
+            } else {
+                const data = payload();
+
+                // 1) ให้ backend ตรวจทุกช่อง + ข้อมูลซ้ำ (username/อีเมล/เบอร์โทร) ก่อน — ยังไม่บันทึก
+                const check = await postJson('/api/finance-app/register/validate', data);
+                if (!check.ok) return showServerErrors(check.errors, check.message);
+
+                // 2) popup สรุปข้อมูลให้ผู้ใช้ยืนยัน
+                setLoading(false);
+                const confirm = await Swal.fire({
+                    icon: 'question',
+                    title: 'ยืนยันการสมัครสมาชิก?',
+                    html: confirmSummaryHtml(data),
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยันการสมัคร',
+                    cancelButtonText: 'กลับไปแก้ไข',
+                    confirmButtonColor: '#12305C',
+                    reverseButtons: true,
+                    focusCancel: true,
                 });
-                if (!response.ok) {
-                    if (response.status >= 500) {
-                        const errorText = await response.text();
-                        throw new Error(`Server Error (${response.status}): ${errorText}`);
-                    }
-                    throw new Error('ไม่สามารถบันทึกข้อมูลที่อยู่ได้');
-                }
+                if (!confirm.isConfirmed) return;
+                setLoading(true);
+
+                // 3) บันทึกจริง — backend ตรวจซ้ำอีกรอบก่อน INSERT
+                const result = await postJson('/api/finance-app/register', data);
+                if (!result.ok) return showServerErrors(result.errors, result.message);
 
                 await Swal.fire({
                     icon: 'success',
@@ -113,15 +242,34 @@ export default function RegisterForm({ onGoToLogin }) {
             if (err.message && err.message.includes('Server Error')) {
                 throw err;
             }
-            setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
+            setFormError('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์');
         } finally {
             setLoading(false);
         }
     };
 
+    const handleBack = () => {
+        setErrors({});
+        setFormError('');
+        if (step > 1) setStep(step - 1);
+        else onGoToLogin();
+    };
+
+    const strength = STRENGTH[passwordStrength(formData.password)];
+    const strengthScore = passwordStrength(formData.password);
+
+    // props ทั่วไปของช่องข้อความ
+    const text = (name, extra = {}) => ({
+        name,
+        value: formData[name],
+        onChange: handleChange,
+        'aria-invalid': !!errors[name],
+        ...extra,
+    });
+
     return (
-        <div className="min-h-screen h-screen flex bg-white overflow-hidden">
-            {/* ฝั่งซ้าย: โลโก้และข้อความต้อนรับ (พื้นสีคราม) */}
+        <div className="min-h-screen lg:h-screen flex bg-white lg:overflow-hidden">
+            {/* ฝั่งซ้าย: โลโก้และข้อความต้อนรับ (พื้นสีคราม) — เฉพาะจอใหญ่ */}
             <div className="hidden lg:flex w-1/2 bg-brand-600 p-12 flex-col justify-between rounded-r-[4rem] text-white">
                 <div className="inline-flex items-center gap-3">
                     <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
@@ -146,151 +294,175 @@ export default function RegisterForm({ onGoToLogin }) {
             </div>
 
             {/* ฝั่งขวา: ฟอร์มสมัครสมาชิก */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white relative overflow-y-auto">
-                <div className="w-full max-w-lg bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-brand-100 border border-slate-100 relative my-auto">
-                    {/* ส่วนหัวบอกสถานะ Progress Bar (1 -> 2 -> 3) */}
-                    <div className="mb-8 flex justify-between text-xs font-bold text-slate-300 px-4 relative">
-                        {/* เส้นเชื่อม */}
-                        <div className="absolute top-1/2 left-8 right-8 h-[2px] bg-slate-100 -z-10 -translate-y-1/2"></div>
+            <div className="w-full lg:w-1/2 flex flex-col items-center px-4 py-6 sm:p-8 bg-white lg:overflow-y-auto">
+                {/* โลโก้บนมือถือ (ฝั่งซ้ายถูกซ่อน) */}
+                <div className="lg:hidden w-full max-w-lg flex items-center gap-2.5 mb-6 px-2">
+                    <div className="w-9 h-9 bg-brand-600 rounded-xl flex items-center justify-center text-white">
+                        <Wallet size={18} />
+                    </div>
+                    <span className="text-lg font-black text-slate-800">Finance Application</span>
+                </div>
 
-                        {/* Step 1 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 1 ? 'text-brand-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>1</div>
-                            <span>บัญชี</span>
-                        </div>
-                        {/* Step 2 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 2 ? 'text-brand-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>2</div>
-                            <span>ข้อมูลส่วนตัว</span>
-                        </div>
-                        {/* Step 3 */}
-                        <div className={`flex flex-col items-center gap-2 bg-white px-2 ${step >= 3 ? 'text-brand-600' : ''}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100'}`}>3</div>
-                            <span>ที่อยู่</span>
-                        </div>
+                <div className="w-full max-w-lg bg-white p-5 sm:p-10 rounded-[2rem] sm:rounded-[2.5rem] sm:shadow-2xl sm:shadow-brand-100 sm:border border-slate-100 my-auto">
+                    {/* Progress (1 -> 2 -> 3) */}
+                    <ol className="mb-8 flex items-start">
+                        {STEPS.map((s, i) => {
+                            const n = i + 1;
+                            const done = step > n;
+                            const active = step >= n;
+                            return (
+                                <li key={s.label} className="flex-1 flex flex-col items-center relative">
+                                    {i > 0 && (
+                                        <span className={`absolute top-4 right-1/2 w-full h-[2px] -z-0 ${active ? 'bg-brand-600' : 'bg-slate-100'}`} />
+                                    )}
+                                    <span className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${active ? 'bg-brand-600 text-white shadow-lg shadow-brand-200' : 'bg-slate-100 text-slate-400'}`}>
+                                        {done ? <Check size={16} strokeWidth={3} /> : n}
+                                    </span>
+                                    <span className={`mt-2 text-xs font-bold ${active ? 'text-brand-600' : 'text-slate-300'}`}>{s.label}</span>
+                                </li>
+                            );
+                        })}
+                    </ol>
+
+                    <div className="text-center mb-6 sm:mb-8">
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-800">{STEPS[step - 1].title}</h3>
+                        <p className="text-slate-400 mt-1.5 text-sm">{STEPS[step - 1].subtitle}</p>
                     </div>
 
-                    <form onSubmit={handleNext} className="space-y-6">
-                        {error && (
+                    <form onSubmit={handleNext} noValidate className="space-y-5">
+                        {formError && (
                             <div className="p-4 bg-expense-50 text-expense-500 text-xs font-bold rounded-2xl text-center border border-expense-100 animate-in fade-in zoom-in duration-300">
-                                {error}
+                                {formError}
                             </div>
                         )}
 
                         {step === 1 && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="text-center mb-8">
-                                    <h3 className="text-2xl font-black text-slate-800">สร้างบัญชีของคุณ</h3>
-                                    <p className="text-slate-400 mt-2 text-sm">เริ่มต้นจัดการการเงินของคุณได้ง่ายๆ</p>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-600 ml-4">ชื่อผู้ใช้งาน</label>
-                                    <input type="text" name="username" value={formData.username} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="Username" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-600 ml-4">รหัสผ่าน</label>
-                                    <input type="password" name="password" value={formData.password} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="••••••••" />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-600 ml-4">อีเมล</label>
-                                    <input type="email" name="email" value={formData.email} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="your@email.com" />
-                                </div>
+                            <div key="step1" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <Field label="ชื่อผู้ใช้งาน" error={errors.username} hint="A-Z, a-z, 0-9 และ _ ความยาว 4–20 ตัว (ตอนเข้าสู่ระบบไม่สนตัวพิมพ์เล็ก/ใหญ่)">
+                                    <IconInput icon={User} error={errors.username} {...text('username', {
+                                        type: 'text', maxLength: 20, autoComplete: 'username',
+                                        autoCapitalize: 'none', spellCheck: false, placeholder: 'username',
+                                    })} />
+                                </Field>
+                                <Field label="อีเมล" error={errors.email}>
+                                    <IconInput icon={Mail} error={errors.email} {...text('email', {
+                                        type: 'email', maxLength: 100, autoComplete: 'email',
+                                        autoCapitalize: 'none', spellCheck: false, placeholder: 'your@email.com',
+                                    })} />
+                                </Field>
+                                <Field label="รหัสผ่าน" error={errors.password} hint="อย่างน้อย 8 ตัว มีทั้งตัวอักษรและตัวเลข">
+                                    <IconInput icon={Lock} error={errors.password} {...text('password', {
+                                        type: showPassword ? 'text' : 'password', maxLength: 64,
+                                        autoComplete: 'new-password', placeholder: '••••••••',
+                                    })} right={
+                                        <button type="button" onClick={() => setShowPassword(v => !v)}
+                                            aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                                            className="absolute right-4 inset-y-0 flex items-center px-1 text-slate-400 hover:text-slate-600">
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    } />
+                                    {formData.password && (
+                                        <div className="flex items-center gap-3 px-4 pt-1">
+                                            <div className="flex-1 grid grid-cols-4 gap-1.5">
+                                                {[1, 2, 3, 4].map(i => (
+                                                    <span key={i} className={`h-1.5 rounded-full ${i <= strengthScore ? strength.color : 'bg-slate-100'}`} />
+                                                ))}
+                                            </div>
+                                            <span className={`text-xs font-bold w-16 text-right ${strength.text}`}>{strength.label}</span>
+                                        </div>
+                                    )}
+                                </Field>
+                                <Field label="ยืนยันรหัสผ่าน" error={errors.confirmPassword}>
+                                    <IconInput icon={Lock} error={errors.confirmPassword} {...text('confirmPassword', {
+                                        type: showPassword ? 'text' : 'password', maxLength: 64,
+                                        autoComplete: 'new-password', placeholder: '••••••••',
+                                    })} />
+                                </Field>
                             </div>
                         )}
 
                         {step === 2 && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="text-center mb-8">
-                                    <h3 className="text-2xl font-black text-slate-800">ข้อมูลส่วนตัว</h3>
-                                    <p className="text-slate-400 mt-2 text-sm">บอกเราสักนิดว่าคุณคือใคร</p>
+                            <div key="step2" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                                <Field label="คำนำหน้า" error={errors.userPrefix}>
+                                    <div role="radiogroup" className="grid grid-cols-3 gap-2">
+                                        {PREFIXES.map(p => (
+                                            <button key={p} type="button" role="radio" aria-checked={formData.userPrefix === p}
+                                                onClick={() => setField('userPrefix', p)}
+                                                className={`py-3 rounded-full text-sm font-bold border transition-all ${formData.userPrefix === p
+                                                    ? 'bg-brand-600 border-brand-600 text-white shadow-lg shadow-brand-200'
+                                                    : `bg-slate-50 text-slate-600 hover:bg-white hover:border-brand-500 ${errors.userPrefix ? 'border-expense-300' : 'border-slate-100'}`}`}>
+                                                {p}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </Field>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="ชื่อจริง" error={errors.userFirstName}>
+                                        <input {...text('userFirstName', { type: 'text', maxLength: 50, autoComplete: 'given-name', placeholder: 'ชื่อจริง' })} className={inputClass(errors.userFirstName)} />
+                                    </Field>
+                                    <Field label="นามสกุล" error={errors.userLastName}>
+                                        <input {...text('userLastName', { type: 'text', maxLength: 50, autoComplete: 'family-name', placeholder: 'นามสกุล' })} className={inputClass(errors.userLastName)} />
+                                    </Field>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">คำนำหน้า</label>
-                                        <input type="text" name="userPrefix" value={formData.userPrefix} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="นาย, นาง, นางสาว" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">ชื่อเล่น</label>
-                                        <input type="text" name="userNickname" value={formData.userNickname} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="ชื่อเล่น" />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">ชื่อจริง</label>
-                                        <input type="text" name="userFirstName" value={formData.userFirstName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="ชื่อจริง" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">นามสกุล</label>
-                                        <input type="text" name="userLastName" value={formData.userLastName} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="นามสกุล" />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-600 ml-4">เบอร์โทรศัพท์</label>
-                                    <input type="tel" name="userPhone" value={formData.userPhone} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" placeholder="08x-xxx-xxxx" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="ชื่อเล่น" error={errors.userNickName}>
+                                        <input {...text('userNickName', { type: 'text', maxLength: 30, autoComplete: 'nickname', placeholder: 'ชื่อเล่น' })} className={inputClass(errors.userNickName)} />
+                                    </Field>
+                                    <Field label="เบอร์โทรศัพท์" error={errors.userPhone}>
+                                        <IconInput icon={Phone} error={errors.userPhone} {...text('userPhone', {
+                                            type: 'tel', inputMode: 'numeric', maxLength: 12, autoComplete: 'tel-national', placeholder: '08x-xxx-xxxx',
+                                        })} />
+                                    </Field>
                                 </div>
                             </div>
                         )}
 
                         {step === 3 && (
-                            <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-                                <div className="text-center mb-8">
-                                    <h3 className="text-2xl font-black text-slate-800">ข้อมูลที่อยู่</h3>
-                                    <p className="text-slate-400 mt-2 text-sm">ข้อมูลสำหรับติดต่อและจัดส่งเอกสาร</p>
-                                </div>
+                            <div key="step3" className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">บ้านเลขที่</label>
-                                        <input type="text" name="houseNo" value={formData.houseNo} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">หมู่ที่</label>
-                                        <input type="text" name="moo" value={formData.moo} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
+                                    <Field label="บ้านเลขที่" error={errors.houseNo}>
+                                        <input {...text('houseNo', { type: 'text', maxLength: 20, placeholder: '99/1' })} className={inputClass(errors.houseNo)} />
+                                    </Field>
+                                    <Field label="หมู่ที่" optional error={errors.moo}>
+                                        <input {...text('moo', { type: 'text', inputMode: 'numeric', maxLength: 3 })} className={inputClass(errors.moo)} />
+                                    </Field>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">ตรอก/ซอย</label>
-                                        <input type="text" name="alley" value={formData.alley} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">ถนน</label>
-                                        <input type="text" name="road" value={formData.road} onChange={handleChange} className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="ตรอก/ซอย" optional error={errors.alley}>
+                                        <input {...text('alley', { type: 'text', maxLength: 100 })} className={inputClass(errors.alley)} />
+                                    </Field>
+                                    <Field label="ถนน" optional error={errors.road}>
+                                        <input {...text('road', { type: 'text', maxLength: 100 })} className={inputClass(errors.road)} />
+                                    </Field>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">ตำบล/แขวง</label>
-                                        <input type="text" name="subDistrict" value={formData.subDistrict} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">อำเภอ/เขต</label>
-                                        <input type="text" name="district" value={formData.district} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="ตำบล/แขวง" error={errors.subDistrict}>
+                                        <input {...text('subDistrict', { type: 'text', maxLength: 50 })} className={inputClass(errors.subDistrict)} />
+                                    </Field>
+                                    <Field label="อำเภอ/เขต" error={errors.district}>
+                                        <input {...text('district', { type: 'text', maxLength: 50 })} className={inputClass(errors.district)} />
+                                    </Field>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">จังหวัด</label>
-                                        <input type="text" name="province" value={formData.province} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-600 ml-4">รหัสไปรษณีย์</label>
-                                        <input type="text" name="postalCode" value={formData.postalCode} onChange={handleChange} required className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm" />
-                                    </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Field label="จังหวัด" error={errors.province}>
+                                        <input {...text('province', { type: 'text', maxLength: 50 })} className={inputClass(errors.province)} />
+                                    </Field>
+                                    <Field label="รหัสไปรษณีย์" error={errors.postalCode}>
+                                        <input {...text('postalCode', { type: 'text', inputMode: 'numeric', maxLength: 5, autoComplete: 'postal-code' })} className={inputClass(errors.postalCode)} />
+                                    </Field>
                                 </div>
                             </div>
                         )}
 
                         {/* ปุ่มควบคุมด้านล่าง */}
-                        <div className="flex gap-4 pt-6 mt-6 border-t border-slate-50">
-                            <button type="button" onClick={() => {
-                                if (step > 1) setStep(step - 1);
-                                else onGoToLogin();
-                            }} className="px-8 py-4 bg-white border border-slate-200 text-slate-600 rounded-full font-bold hover:bg-slate-50 hover:text-slate-900 transition-all">
+                        <div className="flex flex-col-reverse sm:flex-row gap-3 pt-6 mt-2 border-t border-slate-50">
+                            <button type="button" onClick={handleBack} className="px-6 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-full font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center justify-center gap-2 text-sm">
+                                {step > 1 && <ArrowLeft size={18} />}
                                 {step > 1 ? 'ย้อนกลับ' : 'กลับไปหน้าเข้าสู่ระบบ'}
                             </button>
 
-                            <button type="submit" disabled={loading} className="flex-1 py-4 bg-brand-600 text-white rounded-full font-bold hover:bg-brand-700 shadow-xl shadow-brand-200 transition-all flex items-center justify-center gap-2 group disabled:bg-brand-400 disabled:cursor-not-allowed">
-                                {loading ? 'กำลังโหลด...' : (step === 3 ? 'ยืนยันการสมัคร' : 'ถัดไป')}
+                            <button type="submit" disabled={loading} className="flex-1 py-3.5 bg-brand-600 text-white rounded-full font-bold hover:bg-brand-700 shadow-xl shadow-brand-200 transition-all flex items-center justify-center gap-2 group disabled:bg-brand-400 disabled:cursor-not-allowed">
+                                {loading ? 'กำลังตรวจสอบ...' : (step === 3 ? 'ยืนยันการสมัคร' : 'ถัดไป')}
                                 {(!loading && step !== 3) && <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />}
                             </button>
                         </div>

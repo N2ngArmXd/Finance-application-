@@ -8,6 +8,7 @@ import HistoryPage from './components/HistoryPage';
 import Installments from './components/Installments';
 import DashboardPage from './components/DashboardPage';
 import Savings from './components/Savings';
+import { AUTH_EXPIRED_EVENT, fetchCurrentUser, logout } from './utils/auth';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -29,20 +30,36 @@ function App() {
     setActivePage('savings');
   };
 
+  // เปิดแอป: ให้ backend ตรวจ cookie (JWT) — ไม่เชื่อข้อมูลใน localStorage
+  const [checkingSession, setCheckingSession] = useState(true);
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) setUser(JSON.parse(savedUser));
+    localStorage.removeItem('user'); // ของเดิมก่อนใช้ JWT — ไม่ใช้แล้ว
+    fetchCurrentUser().then(me => {
+      setUser(me);
+      setCheckingSession(false);
+    });
+  }, []);
+
+  // API ไหนตอบ 401 (token หมดอายุ/ไม่ถูกต้อง) → กลับหน้า login
+  useEffect(() => {
+    const onExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
   }, []);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    await logout();
     setUser(null);
+    setActivePage('dashboard');
   };
+
+  if (checkingSession) {
+    return <div className="min-h-dvh bg-white" />;
+  }
 
   if (!user) {
     if (isRegistering) {
@@ -71,25 +88,23 @@ function App() {
         {/* Content Section — มือถือเว้นที่ด้านล่างให้ BottomNav */}
         <main className="px-4 pt-4 pb-bottom-nav md:px-6 md:pt-6 lg:p-8">
           {activePage === 'dashboard' && (
-            <DashboardPage userId={user.id} onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
+            <DashboardPage onOpenInstallment={openInstallment} onOpenSavings={openSavings} />
           )}
 
           {activePage === 'transaction' && (
-            <TransactionPage userId={user.id} onNavigate={setActivePage} />
+            <TransactionPage onNavigate={setActivePage} />
           )}
           {activePage === 'history' && (
-            <HistoryPage userId={user.id} onNavigate={setActivePage} onOpenSavings={openSavings} />
+            <HistoryPage onNavigate={setActivePage} onOpenSavings={openSavings} />
           )}
           {activePage === 'savings' && (
             <Savings
-              userId={user.id}
               focusId={savingsFocusId}
               onFocusHandled={() => setSavingsFocusId(null)}
             />
           )}
           {activePage === 'installment' && (
             <Installments
-              userId={user.id}
               focusId={installmentFocusId}
               onFocusHandled={() => setInstallmentFocusId(null)}
             />

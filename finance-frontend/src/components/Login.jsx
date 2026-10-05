@@ -103,10 +103,14 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
 
                                 <input
                                     type="text"
-                                    placeholder="Username or Email"
+                                    placeholder="Username"
                                     className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-full outline-none focus:ring-2 focus:ring-brand-500/20 focus:bg-white focus:border-brand-500 transition-all text-sm leading-none"
                                     /* ใส่ leading-none เพื่อให้ข้อความอยู่กลางที่สุด */
+                                    autoComplete="username"
+                                    autoCapitalize="none"
+                                    spellCheck={false}
                                     value={username}
+                                    // backend เทียบ username เป็นตัวเล็กทั้งคู่ — พิมพ์ตัวใหญ่/เล็กก็เข้าได้
                                     onChange={(e) => setUsername(e.target.value)}
                                 />
                             </div>

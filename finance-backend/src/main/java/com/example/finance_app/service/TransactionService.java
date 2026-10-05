@@ -45,12 +45,6 @@ public class TransactionService {
     @Autowired
     private SavingsMovementRepository savingsMovementRepository;
 
-    public List<Transaction> getActiveTransactions() {
-        Users user = usersRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
-        return transactionRepository.findActiveByUserId(user.getId());
-    }
-
     // Create Transaction
     public Transaction createTransaction(TransactionRequest request) {
 
@@ -214,14 +208,12 @@ public class TransactionService {
 
     // Delete Transaction
     @Transactional
-    public void deleteTrasaction(Long id) {
-
-        Users user = usersRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ในระบบ"));
+    public void deleteTrasaction(Long id, Long userId) {
 
         transactionRepository.findById(id).ifPresent(this::assertNotSavingsSpend);
 
-        int result = transactionRepository.deleteTransactionById(id, user.getId());
+        // query ลบเฉพาะรายการของ userId นี้ — ของคนอื่นจะได้ result = 0
+        int result = transactionRepository.deleteTransactionById(id, userId);
 
         if (result == 0) {
             throw new RuntimeException("ไม่สามารถดำเนินการได้: หาไม่พบ หรือไม่มีสิทธิ์");
@@ -232,9 +224,11 @@ public class TransactionService {
 
     // Update Transaction
     @Transactional
-    public Transaction updateTransaction(Long id, Transaction updateData) {
+    public Transaction updateTransaction(Long id, Transaction updateData, Long userId) {
 
         Transaction existingTransaction = transactionRepository.findById(id)
+                // รายการของคนอื่น ตอบเหมือนหาไม่เจอ (ไม่บอกว่ามี id นี้อยู่)
+                .filter(t -> t.getUserId() != null && userId.equals(t.getUserId().getId()))
                 .orElseThrow(() -> new RuntimeException("ไม่พบรายการธุรกรรมดังกล่าว"));
 
         if (existingTransaction.isDeleted()) {
@@ -242,7 +236,7 @@ public class TransactionService {
         }
         assertNotSavingsSpend(existingTransaction);
 
-        existingTransaction.setUserId(updateData.getUserId());
+        // ไม่รับ userId จาก client — เจ้าของรายการเปลี่ยนไม่ได้
         existingTransaction.setAmount(updateData.getAmount());
         existingTransaction.setDescription(updateData.getDescription());
         // ไม่เขียนทับ transactionDate เดิม (การแก้ไขไม่ควรเปลี่ยนวันที่ของรายการ)

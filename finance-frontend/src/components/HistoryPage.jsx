@@ -66,7 +66,7 @@ const chipTone = (on) => (on
 const presetChip = (on) =>
     `h-9 px-3.5 rounded-full text-sm flex items-center gap-1.5 transition-colors ${chipTone(on)} ${on ? '' : 'hover:bg-slate-50'}`;
 
-const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
+const HistoryPage = ({ onNavigate, onOpenSavings }) => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
@@ -129,8 +129,6 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
         try {
             const response = await fetch('/api/finance-app/categories/getCategoriesList', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: String(userId) })
             });
             if (response.ok) {
                 setCategories(await response.json());
@@ -138,19 +136,18 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
         } catch (error) {
             console.error("Error fetching categories:", error);
         }
-    }, [userId]);
+    }, []);
 
     useEffect(() => {
-        if (userId) fetchCategories();
-    }, [userId, fetchCategories]);
+        fetchCategories();
+    }, [fetchCategories]);
 
     // ดึงข้อมูลตามเงื่อนไข (ค้นหา/กรอง/เรียง/หน้า) จาก server
     useEffect(() => {
-        if (!userId) return;
         let cancelled = false;
 
+        // userId ไม่ต้องส่ง — backend ใช้ของคนที่ login อยู่ (JWT)
         const baseQuery = {
-            userId: Number(userId),
             search: debouncedSearch.trim() || null,
             type: filterType,
             categoryId: filterCategory === 'ALL' ? null : Number(filterCategory),
@@ -220,7 +217,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
 
         fetchPage();
         return () => { cancelled = true; };
-    }, [userId, debouncedSearch, filterType, filterCategory, filterStart, filterEnd, sortConfig, currentPage, reloadFlag]);
+    }, [debouncedSearch, filterType, filterCategory, filterStart, filterEnd, sortConfig, currentPage, reloadFlag]);
 
     // ---------- แก้ไขใน drawer ----------
     const openEdit = (item) => {
@@ -254,7 +251,6 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: editing.item.id,
-                    userId: { id: userId },
                     amount,
                     description: editing.description,
                     categoryId: { id: editing.categoryId }
@@ -293,7 +289,7 @@ const HistoryPage = ({ userId, onNavigate, onOpenSavings }) => {
                 : await fetch('/api/finance-app/transactions/delete-batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: Number(userId), ids })
+                    body: JSON.stringify({ ids })
                 });
             if (!response.ok) throw new Error('delete failed');
             setSelectedIds((prev) => {
