@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -49,17 +48,22 @@ public class DashboardSummaryResponse {
 
     @Data
     @NoArgsConstructor
-    @AllArgsConstructor
     public static class CategoryAmount {
         private Long categoryId;
         private String categoryName;
         private String categoryIcon;
         private BigDecimal amount;
+
+        public CategoryAmount(Long categoryId, String categoryName, String categoryIcon, BigDecimal amount) {
+            this.categoryId = categoryId;
+            this.categoryName = categoryName;
+            this.categoryIcon = categoryIcon;
+            this.amount = amount;
+        }
     }
 
     @Data
     @NoArgsConstructor
-    @AllArgsConstructor
     public static class InstallmentDue {
         private Long installmentsId;
         private String installmentsName;
@@ -69,5 +73,17 @@ public class DashboardSummaryResponse {
         private LocalDate dueDate;
         private boolean paid;
         private boolean overdue; // ครบกำหนดก่อนเดือนนี้และยังไม่จ่าย
+
+        public InstallmentDue(Long installmentsId, String installmentsName, int period, int totalPeriods,
+                BigDecimal amount, LocalDate dueDate, boolean paid, boolean overdue) {
+            this.installmentsId = installmentsId;
+            this.installmentsName = installmentsName;
+            this.period = period;
+            this.totalPeriods = totalPeriods;
+            this.amount = amount;
+            this.dueDate = dueDate;
+            this.paid = paid;
+            this.overdue = overdue;
+        }
     }
 }
