@@ -87,6 +87,8 @@ export default function TransactionPage({ onNavigate }) {
         if (type === selectedType) return;
         setSelectedType(type);
         setSelectedCategoryId(null); // ล้างหมวดที่เลือกเมื่อสลับประเภท
+        // รายรับเลือกวันข้างหน้าได้ แต่รายจ่ายไม่ได้ — สลับมารายจ่ายให้กลับเป็นวันนี้
+        if (type === 'EXPENSE' && date > today) setDate(today);
     };
 
     const handleAmountChange = (v) => {

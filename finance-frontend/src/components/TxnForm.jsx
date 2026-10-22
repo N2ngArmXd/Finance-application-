@@ -157,7 +157,7 @@ export default function TxnForm({
                             <input
                                 ref={dateInputRef}
                                 type="date"
-                                max={today}
+                                max={isExpense ? today : undefined}
                                 value={date}
                                 onChange={(e) => e.target.value && onDateChange(e.target.value)}
                                 tabIndex={-1}
