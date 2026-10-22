@@ -367,11 +367,11 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
     const hasQuery = chips.length > 0 || debouncedSearch.trim() !== '';
 
     // ป้ายการ์ดสรุป: บอกว่ายอดที่เห็นเป็นของช่วงไหน
-    const summaryLabel = !hasDateFilter ? 'ยอดทั้งหมด'
+    const hasOtherFilter = filterType !== 'ALL' || filterCategory !== 'ALL' || debouncedSearch.trim() !== '';
+    const summaryLabel = !hasDateFilter ? (hasOtherFilter ? 'ยอดทุกช่วงเวลา' : 'ยอดทั้งหมด')
         : activePreset ? activePreset.summary
             : activeMonth != null ? `ยอดเดือน ${monthLabel(activeMonth)}`
                 : `ยอด ${dateChipLabel}`;
-    const hasOtherFilter = filterType !== 'ALL' || filterCategory !== 'ALL' || debouncedSearch.trim() !== '';
 
     // จัดกลุ่มรายการในหน้านี้ตามวัน (เฉพาะตอนเรียงตามวันที่)
     const groups = useMemo(() => {
@@ -570,6 +570,11 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
 
             {/* สรุปยอด (ตามตัวกรอง) */}
             <div className="bg-white border border-slate-200 rounded-2xl px-4 sm:px-5 py-4 grid grid-cols-2 sm:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-x-4 sm:gap-x-8 gap-y-4 items-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                <div className="col-span-2 sm:col-span-5 -mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+                    {hasDateFilter ? <Calendar size={14} /> : <Filter size={14} />}
+                    <span className="font-semibold text-slate-700">{summaryLabel}</span>
+                    {hasOtherFilter ? <span>· ตามตัวกรอง</span> : !hasDateFilter && <span>· ทุกรายการ (ยังไม่ได้กรอง)</span>}
+                </div>
                 <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-1 text-xs text-slate-600"><ArrowUp size={12} className="text-income-600" />รายรับ</span>
                     <span className="text-lg sm:text-xl font-bold text-income-600 tabular-nums [overflow-wrap:anywhere]">+฿{formatMoney(totalIncome)}</span>
@@ -589,12 +594,7 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
                     <span className={`text-lg sm:text-xl font-bold tabular-nums [overflow-wrap:anywhere] ${netAmount < 0 ? 'text-expense-600' : 'text-income-600'}`}>{formatSigned(netAmount, true)}</span>
                 </div>
                 <div className="col-span-2 sm:col-span-1 flex flex-col gap-2">
-                    <div className="flex justify-between gap-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1.5">
-                            {hasDateFilter ? <Calendar size={14} /> : <Filter size={14} />}
-                            <span className="font-semibold text-slate-600">{summaryLabel}</span>
-                            {hasOtherFilter && <span>· ตามตัวกรอง</span>}
-                        </span>
+                    <div className="flex justify-end gap-2 text-xs text-slate-500">
                         {totalIncome > 0 && (
                             <span className={netAmount < 0 ? 'font-semibold text-expense-700' : ''}>
                                 จ่ายไป {Math.round((totalExpense / totalIncome) * 100)}% ของรายรับ
