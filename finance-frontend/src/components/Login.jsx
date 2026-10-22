@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Eye, EyeOff, ArrowRight, Wallet, PartyPopper } from 'lucide-react';
+import { APP_NAME, APP_VERSION, COPYRIGHT_YEAR } from '../utils/appInfo';
+import AppFooter from './AppFooter';
 
 export default function Login({ onLoginSuccess, onGoToRegister }) {
     const [username, setUsername] = useState('');
@@ -60,7 +62,7 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                     </p>
                 </div>
 
-                <p className="text-sm text-brand-200">© 2026 Finance Application. Clarity in Wealth.</p>
+                <p className="text-sm text-brand-200">© {COPYRIGHT_YEAR} {APP_NAME} · v{APP_VERSION} · Clarity in Wealth.</p>
             </div>
 
             {/* ฝั่งขวา: ฟอร์มเข้าสู่ระบบ (พื้นสีขาว) */}
@@ -160,6 +162,9 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                         </div>
                     </form>
                 </div>
+
+                {/* จอใหญ่แสดงชื่อ/เวอร์ชันในฝั่งซ้ายแล้ว */}
+                <AppFooter className="lg:hidden absolute bottom-6 inset-x-0 text-center" />
             </div>
         </div>
     );

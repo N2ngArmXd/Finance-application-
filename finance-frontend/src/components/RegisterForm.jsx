@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { User, Lock, Mail, Phone, ArrowRight, ArrowLeft, Wallet, PartyPopper, Eye, EyeOff, Check } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { PREFIXES, filters, formatPhone, validators, passwordStrength, cleanText } from '../utils/inputRules';
+import { APP_NAME, APP_VERSION, COPYRIGHT_YEAR } from '../utils/appInfo';
+import AppFooter from './AppFooter';
 
 const STEPS = [
     { label: 'บัญชี', title: 'สร้างบัญชีของคุณ', subtitle: 'เริ่มต้นจัดการการเงินของคุณได้ง่ายๆ' },
@@ -290,7 +292,7 @@ export default function RegisterForm({ onGoToLogin }) {
                     </p>
                 </div>
 
-                <p className="text-sm text-brand-200">© 2026 Finance Application. Clarity in Wealth.</p>
+                <p className="text-sm text-brand-200">© {COPYRIGHT_YEAR} {APP_NAME} · v{APP_VERSION} · Clarity in Wealth.</p>
             </div>
 
             {/* ฝั่งขวา: ฟอร์มสมัครสมาชิก */}
@@ -468,6 +470,9 @@ export default function RegisterForm({ onGoToLogin }) {
                         </div>
                     </form>
                 </div>
+
+                {/* จอใหญ่แสดงชื่อ/เวอร์ชันในฝั่งซ้ายแล้ว */}
+                <AppFooter className="lg:hidden mt-6 text-center" />
             </div>
         </div>
     );

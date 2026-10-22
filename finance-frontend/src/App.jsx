@@ -8,6 +8,7 @@ import HistoryPage from './components/HistoryPage';
 import Installments from './components/Installments';
 import DashboardPage from './components/DashboardPage';
 import Savings from './components/Savings';
+import AppFooter from './components/AppFooter';
 import { AUTH_EXPIRED_EVENT, fetchCurrentUser, logout } from './utils/auth';
 
 function App() {
@@ -109,6 +110,8 @@ function App() {
               onFocusHandled={() => setInstallmentFocusId(null)}
             />
           )}
+
+          <AppFooter className="mt-10 pt-4 border-t border-slate-200 text-center" />
         </main>
       </div>
 
