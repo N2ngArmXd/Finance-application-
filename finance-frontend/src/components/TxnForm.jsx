@@ -42,6 +42,10 @@ export default function TxnForm({
     description, onDescriptionChange,
     errors = {},
     autoFocusAmount = false,
+    // หมวดค่างวด: แสดงตัวเลือกรายการผ่อนใต้หมวด · ล็อกยอดเป็นค่างวด · ซ่อนรายละเอียด (ระบบตั้งให้)
+    categoryExtra = null,
+    amountLocked = false,
+    showDescription = true,
 }) {
     const dateInputRef = useRef(null);
     const isExpense = type === 'EXPENSE';
@@ -87,6 +91,7 @@ export default function TxnForm({
                         <input
                             value={toDisplay(amount)}
                             onChange={(e) => onAmountChange(sanitize(e.target.value))}
+                            readOnly={amountLocked}
                             inputMode="decimal"
                             placeholder="0.00"
                             aria-label="จำนวนเงิน"
@@ -95,6 +100,11 @@ export default function TxnForm({
                         />
                     </span>
                 </label>
+                {amountLocked && (
+                    <span className="flex items-center gap-1.5 px-1 text-[13px] leading-[18px] text-slate-500">
+                        <Lock size={14} className="shrink-0" /> ยอดตามค่างวดของรายการผ่อนที่เลือก
+                    </span>
+                )}
                 {errors.amt && <FieldError text={errors.amt} />}
             </div>
 
@@ -142,6 +152,7 @@ export default function TxnForm({
                     </div>
                 )}
                 {errors.cat && <FieldError text={errors.cat} />}
+                {categoryExtra}
             </div>
 
             {/* วันที่ */}
@@ -180,7 +191,7 @@ export default function TxnForm({
             </div>
 
             {/* รายละเอียด */}
-            <label className="flex flex-col gap-2.5">
+            {showDescription && <label className="flex flex-col gap-2.5">
                 <span className="text-sm font-semibold text-slate-700">
                     รายละเอียด <span className="font-normal text-slate-500">(ไม่บังคับ)</span>
                 </span>
@@ -191,7 +202,7 @@ export default function TxnForm({
                     placeholder="เช่น ข้าวเที่ยง, ค่ารถ"
                     className="h-12 w-full px-3.5 rounded-xl border border-slate-200 bg-slate-50 text-base sm:text-[15px] text-slate-800 outline-none focus:bg-white focus:border-brand-500 focus:ring-2 focus:ring-brand-500/10 transition-colors"
                 />
-            </label>
+            </label>}
         </div>
     );
 }

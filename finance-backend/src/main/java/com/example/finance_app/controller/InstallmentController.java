@@ -1,5 +1,6 @@
 package com.example.finance_app.controller;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -74,7 +75,10 @@ public class InstallmentController {
             Long installmentsId = Long.valueOf(payload.get("installmentsId").toString());
             int period = Integer.parseInt(payload.get("period").toString());
             boolean paid = payload.get("paid") == null || Boolean.parseBoolean(payload.get("paid").toString());
-            InstallmentsEntity result = installmentService.updatePaidPeriod(installmentsId, userId, period, paid);
+            // วันที่ลงรายจ่าย (ไม่บังคับ) เช่น "2026-10-27T09:30:00" — หน้าบันทึกรายการส่งมา, หน้าผ่อนชำระไม่ส่ง
+            LocalDateTime paidAt = payload.get("transactionDate") == null ? null
+                    : LocalDateTime.parse(payload.get("transactionDate").toString());
+            InstallmentsEntity result = installmentService.updatePaidPeriod(installmentsId, userId, period, paid, paidAt);
             return ResponseEntity.ok(result);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());

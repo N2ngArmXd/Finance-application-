@@ -228,8 +228,10 @@ public class InstallmentService {
     }
 
     // ยืนยัน/ยกเลิกการจ่ายรายงวด — เก็บเลขงวดที่จ่ายแล้วในคอลัมน์ paid_periods
+    // paidAt = วันที่ลงรายจ่ายค่างวด (จากหน้าบันทึกรายการ) — null = วันที่กดจ่าย
     @Transactional
-    public InstallmentsEntity updatePaidPeriod(Long installmentsId, Long userId, int period, boolean paid) {
+    public InstallmentsEntity updatePaidPeriod(Long installmentsId, Long userId, int period, boolean paid,
+            LocalDateTime paidAt) {
         InstallmentsEntity item = installmentsRepository.findById(installmentsId)
                 .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายการผ่อนชำระ"));
 
@@ -257,7 +259,8 @@ public class InstallmentService {
         if (paid && periods.add(period)) {
             transactionService.createInstallmentPayment(item.getUserId(), installmentsId, period,
                     item.getMonthlyAmount(),
-                    "ค่างวด " + item.getInstallmentsName() + " งวดที่ " + period + "/" + item.getInstallmentMonths());
+                    "ค่างวด " + item.getInstallmentsName() + " งวดที่ " + period + "/" + item.getInstallmentMonths(),
+                    paidAt);
         } else if (!paid && periods.remove(period)) {
             transactionService.cancelInstallmentPayments(installmentsId, List.of(period));
         }
