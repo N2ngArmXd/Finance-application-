@@ -52,8 +52,8 @@ export default function TxnForm({
     const openPicker = () => {
         const el = dateInputRef.current;
         if (!el) return;
-        if (el.showPicker) el.showPicker();
-        else el.click();
+        // iOS/iPad เปิดปฏิทินเองจากการแตะ input โดยตรง — showPicker ใช้กับ desktop (อาจ throw ได้)
+        try { el.showPicker?.(); } catch { el.focus(); }
     };
 
     const segment = (active, tone) =>
@@ -151,20 +151,24 @@ export default function TxnForm({
                     <div className="flex flex-wrap gap-2">
                         <button type="button" onClick={() => onDateChange(today)} className={chipClass(date === today)}>วันนี้</button>
                         <button type="button" onClick={() => onDateChange(yesterday)} className={chipClass(date === yesterday)}>เมื่อวาน</button>
-                        <button type="button" onClick={openPicker} className={`relative ${chipClass(isCustomDate)}`}>
-                            <Calendar size={16} />
-                            {isCustomDate ? formatDayLabel(date) : 'เลือกวัน'}
+                        {/* input โปร่งใสวางทับปุ่ม ให้นิ้วแตะโดน input จริง (มือถือ/iPad ไม่รองรับการเปิดผ่านโค้ด) */}
+                        <div className="relative">
+                            <button type="button" onClick={openPicker} className={chipClass(isCustomDate)}>
+                                <Calendar size={16} />
+                                {isCustomDate ? formatDayLabel(date) : 'เลือกวัน'}
+                            </button>
                             <input
                                 ref={dateInputRef}
                                 type="date"
                                 max={isExpense ? today : undefined}
                                 value={date}
                                 onChange={(e) => e.target.value && onDateChange(e.target.value)}
+                                onClick={openPicker}
                                 tabIndex={-1}
                                 aria-hidden="true"
-                                className="absolute inset-0 opacity-0 pointer-events-none"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                             />
-                        </button>
+                        </div>
                     </div>
                 ) : (
                     <div className="h-12 px-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2.5 text-[15px] text-slate-700">

@@ -47,8 +47,8 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
     const openDate = () => {
         const el = dateRef.current;
         if (!el) return;
-        if (typeof el.showPicker === 'function') el.showPicker();
-        else el.focus();
+        // iOS/iPad เปิดปฏิทินเองจากการแตะ input โดยตรง — showPicker ใช้กับ desktop (อาจ throw ได้)
+        try { el.showPicker?.(); } catch { el.focus(); }
     };
 
     const submit = (e) => {
@@ -129,7 +129,7 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
                                             {form.targetDate ? formatShortDate(form.targetDate) : 'เลือกวันที่'}
                                         </span>
                                         {form.targetDate && (
-                                            <button type="button" onClick={(e) => { e.stopPropagation(); set({ targetDate: '' }); }} aria-label="ล้างวันที่" className="text-slate-400 hover:text-slate-600">
+                                            <button type="button" onClick={(e) => { e.stopPropagation(); set({ targetDate: '' }); }} aria-label="ล้างวันที่" className="relative z-10 text-slate-400 hover:text-slate-600">
                                                 <X size={16} />
                                             </button>
                                         )}
@@ -140,7 +140,7 @@ export default function GoalForm({ mode, initial, balance = 0, paused = false, o
                                             min={toDateInput(new Date())}
                                             value={form.targetDate}
                                             onChange={(e) => set({ targetDate: e.target.value })}
-                                            className="absolute inset-0 opacity-0 pointer-events-none"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                         />
                                     </div>
                                 </div>
