@@ -82,8 +82,8 @@ export default function MovementForm({ kind, goal, movement, categories, availab
     const openDate = () => {
         const el = dateRef.current;
         if (!el) return;
-        if (typeof el.showPicker === 'function') el.showPicker();
-        else el.focus();
+        // iOS/iPad เปิดปฏิทินเองจากการแตะ input โดยตรง — showPicker ใช้กับ desktop (อาจ throw ได้)
+        try { el.showPicker?.(); } catch { el.focus(); }
     };
 
     const submit = (e) => {
@@ -226,7 +226,7 @@ export default function MovementForm({ kind, goal, movement, categories, availab
                                     max={today}
                                     value={form.date}
                                     onChange={(e) => e.target.value && set({ date: e.target.value })}
-                                    className="absolute inset-0 opacity-0 pointer-events-none"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
                             </div>
                         </div>

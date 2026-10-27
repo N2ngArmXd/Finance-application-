@@ -122,7 +122,8 @@ export default function Login({ onLoginSuccess, onGoToRegister }) {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center px-4">
                                 <label className="text-sm font-bold text-slate-600">รหัสผ่าน</label>
-                                <button type="button" className="text-xs font-bold text-brand-600 hover:text-brand-700">ลืมรหัสผ่าน?</button>
+                                {/* tabIndex -1: กด Tab จากช่อง username ให้ไปช่องรหัสผ่านทันที */}
+                                <button type="button" tabIndex={-1} className="text-xs font-bold text-brand-600 hover:text-brand-700">ลืมรหัสผ่าน?</button>
                             </div>
                             <div className="relative group">
                                 {/* ไอคอนแม่กุญแจ: ใช้ inset-y-0 และ flex เพื่อให้อยู่กลางแนวตั้งเป๊ะ */}

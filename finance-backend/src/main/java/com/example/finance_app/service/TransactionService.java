@@ -73,9 +73,9 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
-    // สร้างรายจ่ายค่างวดอัตโนมัติตอนกดจ่ายงวดผ่อน — ลงวันที่ที่กดจ่ายจริง
+    // สร้างรายจ่ายค่างวดอัตโนมัติตอนกดจ่ายงวดผ่อน — ลงวันที่ที่เลือก (ไม่ส่งมา = วันที่กดจ่าย)
     public Transaction createInstallmentPayment(Long userId, Long installmentsId, int period,
-            BigDecimal amount, String description) {
+            BigDecimal amount, String description, LocalDateTime paidAt) {
 
         Users user = usersRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("ไม่พบผู้ใช้ดังกล่าว"));
@@ -84,7 +84,7 @@ public class TransactionService {
                 .findActiveByNameAndType(DefaultCategoryInitializer.INSTALLMENT_CATEGORY_NAME, "EXPENSE")
                 .orElseThrow(() -> new RuntimeException("ไม่พบหมวดหมู่ค่างวด-ผ่อนชำระ"));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = paidAt != null ? paidAt : LocalDateTime.now();
         Transaction transaction = new Transaction();
         transaction.setId(generateUniqueTransactionId(category.getType(), now));
         transaction.setUserId(user);

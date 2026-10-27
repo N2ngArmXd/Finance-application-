@@ -64,8 +64,8 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
     const openDate = () => {
         const el = dateRef.current;
         if (!el) return;
-        if (typeof el.showPicker === 'function') el.showPicker();
-        else el.focus();
+        // iOS/iPad เปิดปฏิทินเองจากการแตะ input โดยตรง — showPicker ใช้กับ desktop (อาจ throw ได้)
+        try { el.showPicker?.(); } catch { el.focus(); }
     };
 
     const submit = (e) => {
@@ -178,7 +178,7 @@ export default function InstallmentForm({ mode, initial, paused = false, onCance
                                         tabIndex={-1}
                                         value={form.startDate}
                                         onChange={(e) => e.target.value && set({ startDate: e.target.value })}
-                                        className="absolute inset-0 opacity-0 pointer-events-none"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                     />
                                 </div>
                             </div>
