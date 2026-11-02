@@ -127,6 +127,9 @@ function KpiRow({ data }) {
     // เงินที่ฝากเข้ากระปุกไม่ใช่รายจ่าย แต่ไม่ใช่เงินที่ใช้ได้แล้ว จึงหักออกจากคงเหลือ
     const savingsNet = data.savingsNetThisMonth || 0;
     const remaining = data.net - savingsNet;
+    // availableBalance คือยอดสะสมถึงสิ้นเดือนที่เลือก ส่วนต่างจากเดือนนี้จึงเป็นยอดยกมาจากเดือนก่อน ๆ
+    const balance = data.availableBalance;
+    const carryOver = balance - remaining;
 
     return (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -147,11 +150,16 @@ function KpiRow({ data }) {
             />
             <KpiCard
                 label="คงเหลือสุทธิ"
-                value={remaining}
+                value={balance}
                 icon={<Wallet size={20} />}
-                tone={remaining < 0 ? 'expense' : 'brand'}
-                valueClass={remaining < 0 ? 'text-expense-600' : undefined}
-                sub={savingsNet ? `รายรับ − รายจ่าย − ออม ${formatCurrency(savingsNet)}` : 'รายรับ − รายจ่าย'}
+                tone={balance < 0 ? 'expense' : 'brand'}
+                valueClass={balance < 0 ? 'text-expense-600' : undefined}
+                sub={<>
+                    <div>ยกมา {formatCurrency(carryOver)}</div>
+                    <div className={remaining < 0 ? 'text-expense-600' : undefined}>
+                        เดือนนี้ {remaining > 0 ? '+' : ''}{formatCurrency(remaining)}
+                    </div>
+                </>}
             />
             <KpiCard
                 label="ค่างวดเดือนนี้"
