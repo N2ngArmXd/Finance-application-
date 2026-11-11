@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Search, X, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
-    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank, HandCoins,
+    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank, HandCoins, Users,
 } from 'lucide-react';
 import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime, txnTone, isSavingType } from '../utils/format';
 import { CategoryAvatar } from '../utils/categoryIcons';
@@ -401,7 +401,9 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
     const editingFromSavings = editingItem?.savingsMovementId != null;
     // รายจ่ายชำระหนี้ที่หนี้ยังอยู่ — แก้/ลบที่หน้าติดตามหนี้ (หนี้ที่ลบไปแล้วแก้ที่นี่ได้ตามปกติ)
     const editingFromDebt = !editingFromSavings && !!editingItem?.debtLocked;
-    const editingLocked = editingFromSavings || editingFromDebt;
+    // รายจ่ายยอดเต็มของบิลหาร (บิลยังอยู่) — แก้ที่บิล
+    const editingFromBill = !editingFromSavings && !editingFromDebt && editingItem?.billGroupId != null;
+    const editingLocked = editingFromSavings || editingFromDebt || editingFromBill;
 
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4 animate-zoom-in">
@@ -796,10 +798,35 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
                                         <HandCoins size={18} className="text-rose-700" />
                                     </span>
                                     <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                        <span className="text-sm font-semibold text-rose-700">รายจ่ายจากการชำระหนี้</span>
+                                        {editingItem.categoryType === 'INCOME' ? (
+                                            <>
+                                                <span className="text-sm font-semibold text-rose-700">รายรับเงินคืนจากบิลหาร</span>
+                                                <span className="text-[13px] leading-[18px] text-slate-700">
+                                                    จาก <b className="font-semibold">{editingItem.debtName || '-'}</b>
+                                                    {' '}แก้ไขหรือยกเลิกได้ที่หน้าติดตามหนี้ (แท็บเขาติดหนี้เรา) เพื่อให้ยอดที่ค้างตรงกัน
+                                                </span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-sm font-semibold text-rose-700">รายจ่ายจากการชำระหนี้</span>
+                                                <span className="text-[13px] leading-[18px] text-slate-700">
+                                                    ติดหนี้ <b className="font-semibold">{editingItem.debtName || '-'}</b>
+                                                    {' '}แก้ไขหรือลบได้ที่หน้าติดตามหนี้ เพื่อให้ยอดหนี้คงเหลือตรงกัน
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                                ) : editingFromBill ? (
+                                <div className="flex gap-3 items-start p-4 rounded-xl bg-income-50">
+                                    <span className="w-9 h-9 shrink-0 rounded-full bg-white flex items-center justify-center">
+                                        <Users size={18} className="text-income-700" />
+                                    </span>
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                        <span className="text-sm font-semibold text-income-700">รายจ่ายยอดเต็มของบิลหาร</span>
                                         <span className="text-[13px] leading-[18px] text-slate-700">
-                                            ติดหนี้ <b className="font-semibold">{editingItem.debtName || '-'}</b>
-                                            {' '}แก้ไขหรือลบได้ที่หน้าติดตามหนี้ เพื่อให้ยอดหนี้คงเหลือตรงกัน
+                                            บิล <b className="font-semibold">{editingItem.billTitle || '-'}</b>
+                                            {' '}แก้ยอด/หมวด/วันที่ได้ที่ "แก้ไขบิล" ในหน้าติดตามหนี้ (แท็บเขาติดหนี้เรา) รายจ่ายนี้จะแก้ตามให้
                                         </span>
                                     </div>
                                 </div>
@@ -862,12 +889,14 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
                                 >
                                     ปิด
                                 </button>
-                                {editingFromDebt ? (
+                                {editingFromDebt || editingFromBill ? (
                                 <button
-                                    onClick={() => onOpenDebt && onOpenDebt(editingItem.debtId)}
+                                    onClick={() => onOpenDebt && onOpenDebt(editingItem.debtId ?? null, editingItem.debtGroupId ?? editingItem.billGroupId ?? null)}
                                     className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
                                 >
-                                    <HandCoins size={18} /> จัดการที่หน้าติดตามหนี้
+                                    {editingFromBill || editingItem.debtGroupId != null
+                                        ? <><Users size={18} /> เปิดบิลในหน้าติดตามหนี้</>
+                                        : <><HandCoins size={18} /> จัดการที่หน้าติดตามหนี้</>}
                                 </button>
                                 ) : (
                                 <button

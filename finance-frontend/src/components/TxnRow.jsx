@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Check, ChevronRight, PiggyBank, HandCoins } from 'lucide-react';
+import { Check, ChevronRight, PiggyBank, HandCoins, Users } from 'lucide-react';
 import { CategoryAvatar } from '../utils/categoryIcons';
 import { formatTxnId, formatMoney, formatTime, formatDayLabel, txnTone, isSavingType } from '../utils/format';
 
@@ -27,7 +27,9 @@ export default function TxnRow({
         : `จากเงินออม${item.savingsGoalName ? ` · ${item.savingsGoalName}` : ''}`;
     // รายจ่ายชำระหนี้ (หนี้ยังอยู่) — จัดการที่หน้าติดตามหนี้
     const fromDebt = item.debtPaymentId != null && item.debtName != null;
-    const selectable = table && !fromSavings && !item.debtLocked;
+    // รายจ่ายยอดเต็มของบิลหาร (บิลยังอยู่) — จัดการที่บิล
+    const fromBill = item.billGroupId != null;
+    const selectable = table && !fromSavings && !item.debtLocked && !fromBill;
     // โหมดเลือกบนจอสัมผัส: แตะแถว = เลือก/ยกเลิก แทนการเปิดแก้ไข
     const touchSelecting = isTouch && anySelected;
 
@@ -103,6 +105,12 @@ export default function TxnRow({
                             </span>
                         )}
                     </span>
+                    {fromBill && (
+                        <span className="shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-income-50 text-income-700 text-xs font-semibold flex items-center gap-1 max-w-[180px]">
+                            <Users size={12} className="shrink-0" />
+                            <span className="truncate">บิลหาร · {item.billTitle}</span>
+                        </span>
+                    )}
                     {fromDebt && (
                         <span className="shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-rose-50 text-rose-700 text-xs font-semibold flex items-center gap-1 max-w-[180px]">
                             <HandCoins size={12} className="shrink-0" />

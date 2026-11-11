@@ -9,6 +9,8 @@ import lombok.Data;
 @Data
 public class DebtResponse {
     private Long debtId;
+    private String direction; // PAYABLE (เราติดหนี้) | RECEIVABLE (เขาติดหนี้เรา)
+    private Long groupId;     // บิลหารที่มา (เฉพาะ RECEIVABLE)
     private String creditorName;
     private String description;
     private BigDecimal totalAmount;

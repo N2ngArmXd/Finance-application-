@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, HandCoins, ChevronDown, ChevronUp, Trash2, Pencil, Receipt, TriangleAlert, Info } from 'lucide-react';
+import { Plus, HandCoins, ChevronDown, ChevronUp, Trash2, Pencil, Receipt, TriangleAlert, Info, Users } from 'lucide-react';
 import { formatMoney, formatShortDate, toDateInput } from '../utils/format';
 import { debtApi } from '../utils/debtApi';
 import { toMovementDateTime } from '../utils/savingsApi';
@@ -8,6 +8,7 @@ import DebtCard from './debts/DebtCard';
 import DebtForm from './debts/DebtForm';
 import PaymentForm from './debts/PaymentForm';
 import DebtDetail from './debts/DebtDetail';
+import BillSplit from './debts/BillSplit';
 import ConfirmDialog from './ui/ConfirmDialog';
 import { Toast } from './ui/Toast';
 import { useToast } from './ui/useToast';
@@ -75,7 +76,9 @@ const dialogProps = (d) => {
     };
 };
 
-export default function Debts({ focusId, onFocusHandled }) {
+// focusId = หนี้ฝั่งเราติดหนี้ที่ต้องไฮไลต์ · focusGroupId = บิลหารที่ต้องเปิด (มาจากหน้าประวัติธุรกรรม)
+export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
+    const [tab, setTab] = useState(focusGroupId != null ? 'bills' : 'payable');
     const [debts, setDebts] = useState([]);
     const [summary, setSummary] = useState(null);
     const [fetching, setFetching] = useState(true);
@@ -242,18 +245,49 @@ export default function Debts({ focusId, onFocusHandled }) {
 
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center justify-between gap-4 min-h-11">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-800">ติดตามหนี้</h1>
-                <button
-                    type="button"
-                    onClick={openCreate}
-                    className="shrink-0 h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
-                >
-                    <Plus size={18} /> เพิ่มหนี้
-                </button>
+                {tab === 'payable' && (
+                    <button
+                        type="button"
+                        onClick={openCreate}
+                        className="shrink-0 h-11 pl-3.5 pr-[18px] rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center gap-2"
+                    >
+                        <Plus size={18} /> เพิ่มหนี้
+                    </button>
+                )}
             </div>
 
-            {fetching && debts.length === 0 ? (
+            {/* แท็บ: เราติดหนี้เขา / เขาติดหนี้เรา (บิลหาร) */}
+            <div role="tablist" className="flex gap-1 p-1 bg-slate-100 rounded-xl mb-1">
+                {[
+                    { id: 'payable', label: 'เราติดหนี้', Icon: HandCoins },
+                    { id: 'bills', label: 'เขาติดหนี้เรา', Icon: Users },
+                ].map((t) => (
+                    <button
+                        key={t.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === t.id}
+                        onClick={() => setTab(t.id)}
+                        className={`flex-1 h-11 rounded-[9px] flex items-center justify-center gap-2 text-[15px] font-semibold transition-all ${tab === t.id
+                            ? `bg-white shadow-[0_1px_2px_rgba(15,23,42,0.08),0_1px_3px_rgba(15,23,42,0.06)] ${t.id === 'payable' ? 'text-rose-600' : 'text-income-600'}`
+                            : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <t.Icon size={18} /> {t.label}
+                    </button>
+                ))}
+            </div>
+
+            {tab === 'bills' ? (
+                <BillSplit
+                    available={summary?.availableBalance ?? null}
+                    onChanged={fetchAll}
+                    showToast={showToast}
+                    focusId={focusGroupId}
+                    onFocusHandled={onFocusHandled}
+                />
+            ) : fetching && debts.length === 0 ? (
                 <LoadingSkeleton />
             ) : debts.length === 0 ? (
                 <div className="bg-white border border-slate-200 rounded-2xl px-6 py-10 flex flex-col items-center gap-2 text-center">

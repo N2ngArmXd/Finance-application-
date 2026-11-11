@@ -32,10 +32,12 @@ function App() {
     setActivePage('savings');
   };
 
-  // รายการหนี้ที่ต้องไฮไลต์เมื่อกดมาจากหน้าอื่น (ประวัติธุรกรรม)
+  // รายการหนี้ / บิลหาร ที่ต้องเปิดเมื่อกดมาจากหน้าอื่น (ประวัติธุรกรรม)
   const [debtFocusId, setDebtFocusId] = useState(null);
-  const openDebt = (debtId = null) => {
-    setDebtFocusId(debtId);
+  const [billFocusId, setBillFocusId] = useState(null);
+  const openDebt = (debtId = null, groupId = null) => {
+    setDebtFocusId(groupId != null ? null : debtId);
+    setBillFocusId(groupId);
     setActivePage('debts');
   };
 
@@ -115,7 +117,8 @@ function App() {
           {activePage === 'debts' && (
             <Debts
               focusId={debtFocusId}
-              onFocusHandled={() => setDebtFocusId(null)}
+              focusGroupId={billFocusId}
+              onFocusHandled={() => { setDebtFocusId(null); setBillFocusId(null); }}
             />
           )}
           {activePage === 'installment' && (
