@@ -40,7 +40,7 @@ export function BottomNav({ activePage, setActivePage }) {
             aria-label="เมนูหลัก"
             className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-white border-t border-slate-200 shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.15)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
         >
-            <ul className="h-16 grid grid-cols-5 max-w-xl mx-auto">
+            <ul className="h-16 grid grid-cols-6 max-w-xl mx-auto">
                 {navItems.map((item) => {
                     const { id, Icon, shortLabel } = item;
                     const active = activePage === id;
@@ -51,7 +51,7 @@ export function BottomNav({ activePage, setActivePage }) {
                                 aria-current={active ? 'page' : undefined}
                                 className={`w-full h-full flex flex-col items-center justify-center gap-1 transition-colors ${active ? 'text-brand-600' : 'text-slate-400 active:text-slate-600'}`}
                             >
-                                <span className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${active ? 'bg-gold-100' : ''}`}>
+                                <span className={`flex items-center justify-center w-11 h-7 rounded-full transition-colors ${active ? 'bg-gold-100' : ''}`}>
                                     <Icon size={21} strokeWidth={active ? 2.4 : 2} />
                                 </span>
                                 <span className={`text-[11px] leading-none whitespace-nowrap ${active ? 'font-bold' : 'font-medium'}`}>

@@ -15,10 +15,12 @@ import {
     Circle,
     PiggyBank,
     ArrowUpFromLine,
+    HandCoins,
 } from 'lucide-react';
 
 // map ชื่อไอคอน (เก็บใน DB) -> component ของ lucide-react
 const ICON_MAP = {
+    HandCoins,
     PiggyBank,
     ArrowUpFromLine,
     Utensils,
@@ -39,6 +41,7 @@ const ICON_MAP = {
 
 // สีประจำแต่ละไอคอน (โทนใกล้เคียง emoji เดิม)
 const COLOR_MAP = {
+    HandCoins: 'text-rose-600',
     PiggyBank: 'text-brand-600',
     ArrowUpFromLine: 'text-slate-600',
     Utensils: 'text-orange-500',
@@ -59,6 +62,7 @@ const COLOR_MAP = {
 
 // พื้นวงกลมอ่อน (-50) คู่กับสีไอคอน ใช้กับ CategoryAvatar
 const SOFT_MAP = {
+    HandCoins: 'bg-rose-50',
     PiggyBank: 'bg-brand-50',
     ArrowUpFromLine: 'bg-slate-100',
     Utensils: 'bg-orange-50',

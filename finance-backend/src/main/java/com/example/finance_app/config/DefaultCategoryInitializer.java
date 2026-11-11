@@ -25,6 +25,9 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
     // หมวดที่ใช้กับรายจ่ายที่สร้างอัตโนมัติตอนกดจ่ายงวดผ่อน — ดู InstallmentService.updatePaidPeriod
     public static final String INSTALLMENT_CATEGORY_NAME = "ค่างวด-ผ่อนชำระ";
 
+    // หมวดของรายจ่ายที่สร้างอัตโนมัติตอนกดชำระหนี้ — ดู DebtService.pay
+    public static final String DEBT_CATEGORY_NAME = "ชำระหนี้";
+
     // ประเภทหมวดของการย้ายเงินเข้า/ออกกระปุก — ไม่ใช่รายรับ/รายจ่าย (dashboard/ยอดรายรับรายจ่ายไม่นับ)
     // ดู SavingsService และ TransactionService.createSavingsTransfer
     public static final String SAVING_IN = "SAVING_IN";
@@ -43,6 +46,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "บันเทิง", "EXPENSE", "Music" },
             { "การศึกษา", "EXPENSE", "GraduationCap" },
             { INSTALLMENT_CATEGORY_NAME, "EXPENSE", "CreditCard" },
+            { DEBT_CATEGORY_NAME, "EXPENSE", "HandCoins" },
             { "อื่นๆ", "EXPENSE", "Circle" },
             { "เงินเดือน", "INCOME", "Wallet" },
             { "โบนัส", "INCOME", "Coins" },
