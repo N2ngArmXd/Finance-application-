@@ -1,6 +1,6 @@
 {
   "name": "finance-app-root",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Finance Application Root",
   "scripts": {
     "backend": "dotenv -e .env -- mvn -f finance-backend/pom.xml spring-boot:run",
