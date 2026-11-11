@@ -47,6 +47,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "ของใช้ส่วนตัว-ในบ้าน", "EXPENSE", "Package" },
             { "สุขภาพ", "EXPENSE", "HeartPulse" },
             { "บันเทิง", "EXPENSE", "Music" },
+            { "เกม", "EXPENSE", "Gamepad2" },
             { "การศึกษา", "EXPENSE", "GraduationCap" },
             { INSTALLMENT_CATEGORY_NAME, "EXPENSE", "CreditCard" },
             { DEBT_CATEGORY_NAME, "EXPENSE", "HandCoins" },
