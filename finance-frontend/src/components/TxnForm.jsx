@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { ArrowDownCircle, ArrowUpCircle, AlertCircle, Calendar, Lock } from 'lucide-react';
-import { CategoryAvatar } from '../utils/categoryIcons';
 import { formatDayLabel } from '../utils/format';
+import CategorySelect from './ui/CategorySelect';
 
 // แสดงยอดที่พิมพ์พร้อมคอมมา (เก็บค่าจริงเป็นตัวเลขล้วน เช่น "1250.5")
 const toDisplay = (raw) => {
@@ -46,11 +46,12 @@ export default function TxnForm({
     categoryExtra = null,
     amountLocked = false,
     showDescription = true,
+    // ป้าย "ลิงก์กับหน้า…" ของหมวดที่ดึงรายการจากหน้าอื่น — { [ชื่อหมวด]: { page, Icon } }
+    categoryHints,
 }) {
     const dateInputRef = useRef(null);
     const isExpense = type === 'EXPENSE';
     const visible = categories.filter((c) => c.type === type);
-    const selected = visible.find((c) => c.id === categoryId);
     const isCustomDate = dateMode === 'chips' && date !== today && date !== yesterday;
 
     const openPicker = () => {
@@ -110,46 +111,25 @@ export default function TxnForm({
 
             {/* หมวดหมู่ */}
             <div className="flex flex-col gap-2.5">
-                <div className="flex justify-between items-baseline gap-2">
-                    <span className="text-sm font-semibold text-slate-700">หมวดหมู่</span>
-                    <span className="text-xs text-slate-500">{selected ? `เลือกแล้ว: ${selected.name}` : 'แตะเพื่อเลือก'}</span>
-                </div>
+                <span className="text-sm font-semibold text-slate-700">หมวดหมู่</span>
                 {loadingCats ? (
-                    <div aria-busy="true" className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2">
-                        {Array.from({ length: 8 }, (_, i) => (
-                            <div key={i} className="min-h-20 rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-100 flex flex-col items-center justify-center gap-2 animate-pulse">
-                                <span className="w-9 h-9 rounded-full bg-slate-200" />
-                                <span className="w-10 h-2.5 rounded-full bg-slate-200" />
-                            </div>
-                        ))}
+                    <div aria-busy="true" className="h-14 pl-2.5 pr-3.5 rounded-xl ring-1 ring-inset ring-slate-100 bg-slate-50 flex items-center gap-3 animate-pulse">
+                        <span className="w-9 h-9 rounded-full bg-slate-200" />
+                        <span className="w-28 h-3 rounded-full bg-slate-200" />
                     </div>
                 ) : visible.length === 0 ? (
                     <div className="flex flex-col items-center gap-1 py-5 px-4 rounded-xl border-[1.5px] border-dashed border-slate-300 text-center">
                         <span className="text-sm font-semibold text-slate-700">ยังไม่มีหมวด{isExpense ? 'รายจ่าย' : 'รายรับ'}</span>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-2">
-                        {visible.map((cat) => {
-                            const active = cat.id === categoryId;
-                            return (
-                                <button
-                                    key={cat.id}
-                                    type="button"
-                                    aria-pressed={active}
-                                    onClick={() => onCategoryChange(cat.id)}
-                                    className={`min-h-20 px-1 py-2 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors ${active
-                                        ? 'bg-brand-50 ring-2 ring-inset ring-brand-500'
-                                        : `bg-white hover:bg-slate-50 ring-1 ring-inset ${errors.cat ? 'ring-expense-200' : 'ring-slate-200'}`
-                                        }`}
-                                >
-                                    <CategoryAvatar name={cat.icon} size={36} />
-                                    <span className={`text-xs leading-4 text-center line-clamp-2 break-words w-full ${active ? 'font-semibold text-brand-700' : 'font-medium text-slate-700'}`}>
-                                        {cat.name}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
+                    <CategorySelect
+                        categories={visible}
+                        value={categoryId}
+                        onChange={onCategoryChange}
+                        error={!!errors.cat}
+                        placeholder={`เลือกหมวด${isExpense ? 'รายจ่าย' : 'รายรับ'}`}
+                        hints={categoryHints}
+                    />
                 )}
                 {errors.cat && <FieldError text={errors.cat} />}
                 {categoryExtra}

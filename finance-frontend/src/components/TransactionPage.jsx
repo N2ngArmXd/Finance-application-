@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { showConfirm } from '../utils/swr';
 import { formatMoney, formatSigned, toDateInput, formatDayLabel, formatShortDate, txnTone } from '../utils/format';
 import { calculateProgress, isInstallmentCompleted } from '../utils/installmentMath';
-import { Loader2, ArrowRight, NotebookPen, Check } from 'lucide-react';
+import { debtApi } from '../utils/debtApi';
+import { Loader2, ArrowRight, NotebookPen, Check, Coins, HandCoins } from 'lucide-react';
 import TxnForm from './TxnForm';
 import TxnRow from './TxnRow';
 import { Toast } from './ui/Toast';
@@ -17,6 +18,15 @@ const canAutoFocus = typeof window !== 'undefined' && window.matchMedia('(pointe
 
 // ชื่อหมวดค่างวดที่ระบบสร้างให้ (ตรงกับ DefaultCategoryInitializer.INSTALLMENT_CATEGORY_NAME)
 const INSTALLMENT_CATEGORY_NAME = 'ค่างวด-ผ่อนชำระ';
+
+// ชื่อหมวดชำระหนี้ที่ระบบสร้างให้ (ตรงกับ DefaultCategoryInitializer.DEBT_CATEGORY_NAME)
+const DEBT_CATEGORY_NAME = 'ชำระหนี้';
+
+// หมวดที่เลือกแล้วจะดึงรายการจากหน้าอื่นมาให้เลือก — บอกใน dropdown ว่าลิงก์กับหน้าไหน (ชื่อ/ไอคอนตรงกับเมนู)
+const CATEGORY_HINTS = {
+    [INSTALLMENT_CATEGORY_NAME]: { page: 'ตารางผ่อนชำระ', Icon: Coins },
+    [DEBT_CATEGORY_NAME]: { page: 'ติดตามหนี้', Icon: HandCoins },
+};
 
 // รายการผ่อนที่ยังมีงวดค้างจ่าย เรียงตามวันครบกำหนดงวดถัดไป
 const toPayable = (list) => list
@@ -75,6 +85,82 @@ function InstallmentPicker({ payable, loading, selectedId, onSelect, error }) {
     );
 }
 
+// เลือกหนี้ที่จะชำระ (แสดงใต้หมวดเมื่อเลือกหมวดชำระหนี้) — ยอดกรอกเองได้ ไม่เกินคงเหลือ
+function DebtPicker({ debts, loading, selectedId, onSelect, onPayAll, amount, error }) {
+    const selected = debts.find((d) => d.debtId === selectedId);
+    const amt = Number(amount) || 0;
+    return (
+        <div className="flex flex-col gap-2 pt-1">
+            <span className="text-sm font-semibold text-slate-700">ชำระหนี้รายการไหน</span>
+            {loading ? (
+                <div aria-busy="true" className="h-16 rounded-xl bg-slate-50 ring-1 ring-inset ring-slate-100 animate-pulse" />
+            ) : debts.length === 0 ? (
+                <span className="py-3 px-3.5 rounded-xl border-[1.5px] border-dashed border-slate-300 text-[13px] text-slate-500 text-center">
+                    ไม่มีหนี้ค้างจ่าย · บันทึกเป็นรายจ่ายทั่วไปได้
+                </span>
+            ) : (
+                <div role="radiogroup" className="flex flex-col gap-2">
+                    {debts.map((d) => {
+                        const active = d.debtId === selectedId;
+                        return (
+                            <button
+                                key={d.debtId}
+                                type="button"
+                                role="radio"
+                                aria-checked={active}
+                                onClick={() => onSelect(d.debtId)}
+                                className={`min-h-14 px-3.5 py-2.5 rounded-xl flex items-center gap-3 text-left transition-colors ${active
+                                    ? 'bg-brand-50 ring-2 ring-inset ring-brand-500'
+                                    : `bg-white hover:bg-slate-50 ring-1 ring-inset ${error ? 'ring-expense-200' : 'ring-slate-200'}`
+                                    }`}
+                            >
+                                <span className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center ${active ? 'bg-brand-600 text-white' : 'ring-1 ring-inset ring-slate-300'}`}>
+                                    {active && <Check size={13} strokeWidth={3} />}
+                                </span>
+                                <span className="flex-1 min-w-0 flex flex-col">
+                                    <span className={`text-sm line-clamp-2 break-words ${active ? 'font-semibold text-brand-700' : 'font-medium text-slate-800'}`}>{d.creditorName}</span>
+                                    <span className="text-xs text-slate-500">
+                                        จ่ายแล้ว ฿{formatMoney(d.paidAmount)} / ฿{formatMoney(d.totalAmount)}
+                                        {d.dueDate && !d.overdue && ` · คืนภายใน ${formatShortDate(d.dueDate)}`}
+                                        {d.overdue && <span className="ml-1.5 font-semibold text-expense-600">เลยกำหนดคืน</span>}
+                                    </span>
+                                </span>
+                                <span className="shrink-0 flex flex-col items-end">
+                                    <span className="text-[11px] text-slate-500">คงเหลือ</span>
+                                    <span className="text-sm font-semibold tabular-nums text-slate-800">฿{formatMoney(d.remaining)}</span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+            {selected && (
+                <div className="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onPayAll}
+                        className={`h-9 px-3 rounded-full text-sm font-medium transition-colors ${amt === Number(selected.remaining)
+                            ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-300'
+                            : 'bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50'}`}
+                    >
+                        จ่ายทั้งหมด ฿{formatMoney(selected.remaining)}
+                    </button>
+                    {amt > 0 && amt <= Number(selected.remaining) + 0.0001 && (
+                        <span className="text-xs text-slate-500 tabular-nums">
+                            {amt >= Number(selected.remaining) - 0.0001
+                                ? 'จ่ายครั้งนี้แล้วชำระครบ'
+                                : `คงเหลือหลังจ่าย ฿${formatMoney(selected.remaining - amt)}`}
+                        </span>
+                    )}
+                </div>
+            )}
+            {error && (
+                <span className="px-1 text-[13px] leading-[18px] font-medium text-expense-700">{error}</span>
+            )}
+        </div>
+    );
+}
+
 export default function TransactionPage({ onNavigate }) {
     const [categories, setCategories] = useState([]);
     const [selectedType, setSelectedType] = useState('EXPENSE'); // เลือกประเภทก่อน default = รายจ่าย
@@ -91,6 +177,9 @@ export default function TransactionPage({ onNavigate }) {
     const [installments, setInstallments] = useState([]);
     const [fetchingInst, setFetchingInst] = useState(true);
     const [installmentId, setInstallmentId] = useState(null); // รายการผ่อนที่จะจ่าย (หมวดค่างวด)
+    const [debts, setDebts] = useState([]);
+    const [fetchingDebts, setFetchingDebts] = useState(true);
+    const [debtId, setDebtId] = useState(null); // หนี้ที่จะชำระ (หมวดชำระหนี้)
     const [toast, showToast] = useToast();
 
     const today = toDateInput(new Date());
@@ -133,13 +222,28 @@ export default function TransactionPage({ onNavigate }) {
         }
     };
 
+    const fetchDebts = async () => {
+        try {
+            setDebts(await debtApi('list') || []);
+        } catch (e) {
+            console.error('Fetch debts error:', e);
+        } finally {
+            setFetchingDebts(false);
+        }
+    };
+
     useEffect(() => {
         fetchCategories();
         fetchRecent();
         fetchInstallments();
+        fetchDebts();
     }, []);
 
     const payable = useMemo(() => toPayable(installments), [installments]);
+    // หนี้ที่ยังจ่ายไม่ครบ: เลยกำหนดขึ้นก่อน -> ใกล้กำหนด -> ไม่กำหนด
+    const payableDebts = useMemo(() => debts
+        .filter((d) => d.status !== 'PAID')
+        .sort((a, b) => (b.overdue - a.overdue) || (a.dueDate || '9999').localeCompare(b.dueDate || '9999')), [debts]);
 
     // รายการวันนี้ (ใหม่ → เก่า) + ยอดรวม (net)
     const todayItems = useMemo(
@@ -163,6 +267,8 @@ export default function TransactionPage({ onNavigate }) {
     const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
     const isInstallmentCat = selectedCategory?.type === 'EXPENSE' && selectedCategory?.name === INSTALLMENT_CATEGORY_NAME;
     const paying = isInstallmentCat ? payable.find((p) => p.item.installmentsId === installmentId) : null;
+    const isDebtCat = selectedCategory?.type === 'EXPENSE' && selectedCategory?.name === DEBT_CATEGORY_NAME;
+    const payingDebt = isDebtCat ? payableDebts.find((d) => d.debtId === debtId) : null;
 
     // ออกจากโหมดจ่ายค่างวด → ล้างรายการผ่อนและยอดที่ระบบใส่ให้
     const clearInstallment = () => {
@@ -179,11 +285,17 @@ export default function TransactionPage({ onNavigate }) {
         setErrors((e) => ({ ...e, amt: undefined, inst: undefined }));
     };
 
+    const handleSelectDebt = (id) => {
+        setDebtId(id);
+        setErrors((e) => ({ ...e, debt: undefined, amt: undefined }));
+    };
+
     const handleSelectType = (type) => {
         if (type === selectedType) return;
         setSelectedType(type);
         setSelectedCategoryId(null); // ล้างหมวดที่เลือกเมื่อสลับประเภท
         clearInstallment();
+        setDebtId(null);
         // รายรับเลือกวันข้างหน้าได้ แต่รายจ่ายไม่ได้ — สลับมารายจ่ายให้กลับเป็นวันนี้
         if (type === 'EXPENSE' && date > today) setDate(today);
     };
@@ -195,8 +307,11 @@ export default function TransactionPage({ onNavigate }) {
 
     const handleCategoryChange = (id) => {
         setSelectedCategoryId(id);
-        if (id !== selectedCategoryId) clearInstallment();
-        setErrors((e) => ({ ...e, cat: undefined, inst: undefined }));
+        if (id !== selectedCategoryId) {
+            clearInstallment();
+            setDebtId(null);
+        }
+        setErrors((e) => ({ ...e, cat: undefined, inst: undefined, debt: undefined }));
     };
 
     const handleSubmit = async (e) => {
@@ -208,6 +323,11 @@ export default function TransactionPage({ onNavigate }) {
         if (!selectedCategoryId) nextErrors.cat = 'เลือกหมวดหมู่ก่อนบันทึก';
         // หมวดค่างวดต้องเลือกรายการผ่อน (กันรายจ่ายค่างวดที่ไม่ผูกกับงวด → นับซ้ำ) ยกเว้นไม่มีรายการค้างจ่าย
         if (isInstallmentCat && !paying && payable.length > 0) nextErrors.inst = 'เลือกรายการผ่อนที่จะจ่าย';
+        // หมวดชำระหนี้ต้องเลือกหนี้ (ยอดคงเหลือของหนี้จะได้ลดตาม) ยกเว้นไม่มีหนี้ค้าง
+        if (isDebtCat && !payingDebt && payableDebts.length > 0) nextErrors.debt = 'เลือกหนี้ที่จะชำระ';
+        if (payingDebt && amountNum > Number(payingDebt.remaining) + 0.0001) {
+            nextErrors.amt = `จ่ายได้ไม่เกินยอดคงเหลือ ฿${formatMoney(payingDebt.remaining)}`;
+        }
         if (Object.keys(nextErrors).length) {
             setErrors(nextErrors);
             return;
@@ -221,6 +341,7 @@ export default function TransactionPage({ onNavigate }) {
                 <div><span style="color:#64748b;">ประเภท:</span> <b>${typeLabel}</b></div>
                 <div><span style="color:#64748b;">หมวดหมู่:</span> <b>${escapeHtml(selectedCategory?.name ?? '-')}</b></div>
                 ${paying ? `<div><span style="color:#64748b;">รายการผ่อน:</span> <b>${escapeHtml(paying.item.installmentsName)} · งวดที่ ${paying.next.month}/${paying.item.installmentMonths}</b></div>` : ''}
+                ${payingDebt ? `<div><span style="color:#64748b;">ชำระหนี้:</span> <b>${escapeHtml(payingDebt.creditorName)}</b> <span style="color:#64748b;">· คงเหลือหลังจ่าย ${formatMoney(Math.max(payingDebt.remaining - amountNum, 0))} บาท</span></div>` : ''}
                 <div><span style="color:#64748b;">จำนวนเงิน:</span> <b style="color:${amountColor};">${isExpense ? '−' : '+'}${formatMoney(amountNum)} บาท</b></div>
                 <div><span style="color:#64748b;">วันที่:</span> <b>${formatDayLabel(date)}</b></div>
                 ${description && !paying ? `<div><span style="color:#64748b;">รายละเอียด:</span> <b>${escapeHtml(description)}</b></div>` : ''}
@@ -236,6 +357,27 @@ export default function TransactionPage({ onNavigate }) {
         const transactionDate = `${date}T${time}`;
 
         try {
+            // ชำระหนี้ = ใช้ API เดียวกับหน้าติดตามหนี้ (บันทึกการจ่าย + สร้างรายจ่ายหมวดชำระหนี้) ลงวันที่ตามที่เลือก
+            if (payingDebt) {
+                const saved = await debtApi('pay', {
+                    debtId: payingDebt.debtId,
+                    amount: amountNum,
+                    paymentDate: transactionDate,
+                    note: description.trim() || null,
+                });
+                const when = date === today ? '' : ` · ${formatDayLabel(date)}`;
+                const fullyPaid = amountNum >= Number(payingDebt.remaining) - 0.0001;
+                showToast(`ชำระหนี้ ${payingDebt.creditorName}${fullyPaid ? ' ครบแล้ว' : ''} −฿${formatMoney(amountNum)}${when}`);
+                setAddedId(saved?.transactionId ?? null);
+                setAmount('');
+                setDescription('');
+                setSelectedCategoryId(null);
+                setDebtId(null);
+                fetchRecent();
+                fetchDebts();
+                return;
+            }
+
             // จ่ายค่างวด = ใช้ API เดียวกับหน้าผ่อนชำระ (ติ๊กงวด + สร้างรายจ่ายผูกงวด) แค่ลงวันที่ตามที่เลือก
             const res = paying
                 ? await fetch('/api/finance-app/installments/pay-period', {
@@ -277,7 +419,8 @@ export default function TransactionPage({ onNavigate }) {
             }
         } catch (e) {
             console.error('Error:', e);
-            showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ · ข้อมูลยังอยู่ครบ', 'error');
+            // debtApi โยนข้อความจาก backend มา (เช่น จ่ายเกินยอดคงเหลือ)
+            showToast(payingDebt ? e.message : 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ · ข้อมูลยังอยู่ครบ', 'error');
         } finally {
             setLoading(false);
         }
@@ -323,13 +466,24 @@ export default function TransactionPage({ onNavigate }) {
                         autoFocusAmount={canAutoFocus}
                         amountLocked={!!paying}
                         showDescription={!paying}
-                        categoryExtra={isInstallmentCat && (
+                        categoryHints={CATEGORY_HINTS}
+                        categoryExtra={isInstallmentCat ? (
                             <InstallmentPicker
                                 payable={payable}
                                 loading={fetchingInst}
                                 selectedId={installmentId}
                                 onSelect={handleSelectInstallment}
                                 error={errors.inst}
+                            />
+                        ) : isDebtCat && (
+                            <DebtPicker
+                                debts={payableDebts}
+                                loading={fetchingDebts}
+                                selectedId={debtId}
+                                onSelect={handleSelectDebt}
+                                onPayAll={() => payingDebt && handleAmountChange(String(Number(payingDebt.remaining)))}
+                                amount={amount}
+                                error={errors.debt}
                             />
                         )}
                     />
