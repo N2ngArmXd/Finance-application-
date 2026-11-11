@@ -52,4 +52,9 @@ public class Transaction {
     @Column(name = "savings_movement_id")
     private Long savingsMovementId;
 
+    // รายจ่ายที่ระบบสร้างตอนกด "ชำระหนี้" ลิงก์กลับไปที่รายการชำระ (null = บันทึกเอง)
+    // แก้ไข/ลบได้ที่หน้าติดตามหนี้ (ยกเว้นหนี้ถูกลบไปแล้ว)
+    @Column(name = "debt_payment_id")
+    private Long debtPaymentId;
+
 }

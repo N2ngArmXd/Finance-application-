@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Check, ChevronRight, PiggyBank } from 'lucide-react';
+import { Check, ChevronRight, PiggyBank, HandCoins } from 'lucide-react';
 import { CategoryAvatar } from '../utils/categoryIcons';
 import { formatTxnId, formatMoney, formatTime, formatDayLabel, txnTone, isSavingType } from '../utils/format';
 
@@ -25,7 +25,9 @@ export default function TxnRow({
     const savingBadge = isSavingType(item.categoryType)
         ? item.savingsGoalName || 'เงินออม'
         : `จากเงินออม${item.savingsGoalName ? ` · ${item.savingsGoalName}` : ''}`;
-    const selectable = table && !fromSavings;
+    // รายจ่ายชำระหนี้ (หนี้ยังอยู่) — จัดการที่หน้าติดตามหนี้
+    const fromDebt = item.debtPaymentId != null && item.debtName != null;
+    const selectable = table && !fromSavings && !item.debtLocked;
     // โหมดเลือกบนจอสัมผัส: แตะแถว = เลือก/ยกเลิก แทนการเปิดแก้ไข
     const touchSelecting = isTouch && anySelected;
 
@@ -101,6 +103,12 @@ export default function TxnRow({
                             </span>
                         )}
                     </span>
+                    {fromDebt && (
+                        <span className="shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-rose-50 text-rose-700 text-xs font-semibold flex items-center gap-1 max-w-[180px]">
+                            <HandCoins size={12} className="shrink-0" />
+                            <span className="truncate">{item.debtName}</span>
+                        </span>
+                    )}
                     {fromSavings && (
                         <span className="shrink-0 h-5 pl-1.5 pr-2 rounded-full bg-gold-50 text-gold-700 text-xs font-semibold flex items-center gap-1 max-w-[180px]">
                             <PiggyBank size={12} className="shrink-0" />

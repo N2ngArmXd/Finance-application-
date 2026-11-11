@@ -22,6 +22,44 @@ public class TransactionListResponse {
     private Long savingsGoalId;
     private String savingsGoalName;
 
+    // รายจ่ายจากการชำระหนี้ (null = บันทึกเอง) — debtLocked = หนี้ยังอยู่ ห้ามแก้/ลบจากหน้าประวัติ
+    private Long debtPaymentId;
+    private Long debtId;
+    private String debtName;
+    private boolean debtLocked;
+
+    public Long getDebtPaymentId() {
+        return debtPaymentId;
+    }
+
+    public void setDebtPaymentId(Long debtPaymentId) {
+        this.debtPaymentId = debtPaymentId;
+    }
+
+    public Long getDebtId() {
+        return debtId;
+    }
+
+    public void setDebtId(Long debtId) {
+        this.debtId = debtId;
+    }
+
+    public String getDebtName() {
+        return debtName;
+    }
+
+    public void setDebtName(String debtName) {
+        this.debtName = debtName;
+    }
+
+    public boolean isDebtLocked() {
+        return debtLocked;
+    }
+
+    public void setDebtLocked(boolean debtLocked) {
+        this.debtLocked = debtLocked;
+    }
+
     public TransactionListResponse(Long id, BigDecimal amount, String description, LocalDateTime transactionDate,
             String categoryName, String categoryType, Long categoryId) {
         this.id = id;

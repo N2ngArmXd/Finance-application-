@@ -27,6 +27,7 @@ import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.CategoriesRepository;
+import com.example.finance_app.repository.DebtPaymentRepository;
 import com.example.finance_app.repository.SavingsMovementRepository;
 import com.example.finance_app.repository.TransactionRepository;
 import com.example.finance_app.repository.UsersRepository;
@@ -44,6 +45,8 @@ public class TransactionService {
     private CategoriesRepository categoriesRepository;
     @Autowired
     private SavingsMovementRepository savingsMovementRepository;
+    @Autowired
+    private DebtPaymentRepository debtPaymentRepository;
 
     // Create Transaction
     public Transaction createTransaction(TransactionRequest request) {
@@ -143,6 +146,39 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    // สร้างรายจ่ายหมวด "ชำระหนี้" อัตโนมัติตอนกดชำระหนี้ — ลิงก์กลับไปที่รายการชำระ
+    public Transaction createDebtPayment(Long userId, Long debtPaymentId, BigDecimal amount,
+            LocalDateTime date, String description) {
+
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบผู้ใช้ดังกล่าว"));
+        Categories category = categoriesRepository
+                .findActiveByNameAndType(DefaultCategoryInitializer.DEBT_CATEGORY_NAME, "EXPENSE")
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบหมวดหมู่ชำระหนี้"));
+
+        Transaction transaction = new Transaction();
+        transaction.setId(generateUniqueTransactionId(category.getType(), date));
+        transaction.setUserId(user);
+        transaction.setCategoryId(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setTransactionDate(date);
+        transaction.setDebtPaymentId(debtPaymentId);
+
+        return transactionRepository.save(transaction);
+    }
+
+    // แก้ยอด/วันที่/รายละเอียดของ transaction ที่ระบบสร้าง (เช่น รายจ่ายชำระหนี้)
+    public void updateLinkedTransaction(Long transactionId, BigDecimal amount, LocalDateTime date,
+            String description) {
+        updateSavingsTransaction(transactionId, null, amount, date, description);
+    }
+
+    // ยกเลิก transaction ที่ระบบสร้าง (soft delete)
+    public void cancelLinkedTransaction(Long transactionId) {
+        cancelSavingsTransaction(transactionId);
+    }
+
     // แก้ transaction ที่ผูกกับรายการฝาก/ถอน ให้ตรงกับรายการที่ถูกแก้ (categoryId ใช้เฉพาะถอนไปใช้)
     public void updateSavingsTransaction(Long transactionId, Long categoryId, BigDecimal amount,
             LocalDateTime date, String description) {
@@ -183,6 +219,11 @@ public class TransactionService {
     private void assertNotSavingsSpend(Transaction t) {
         if (t.getSavingsMovementId() != null) {
             throw new RuntimeException("รายการนี้มาจากเงินออม แก้ไขหรือลบได้ที่หน้าเงินออม");
+        }
+        // รายจ่ายชำระหนี้ต้องจัดการที่หน้าติดตามหนี้ ไม่งั้นยอดคงเหลือของหนี้จะไม่ตรง (หนี้ที่ลบแล้วแก้ที่นี่ได้)
+        if (t.getDebtPaymentId() != null
+                && transactionRepository.countLockedDebtPayments(List.of(t.getId())) > 0) {
+            throw new RuntimeException("รายการนี้มาจากการชำระหนี้ แก้ไขหรือลบได้ที่หน้าติดตามหนี้");
         }
     }
 
@@ -257,6 +298,7 @@ public class TransactionService {
                 .map(this::toListResponse)
                 .collect(Collectors.toList());
         fillSavingsGoalNames(result);
+        fillDebtNames(result);
         return result;
     }
 
@@ -282,6 +324,29 @@ public class TransactionService {
         }
     }
 
+    // เติมชื่อเจ้าหนี้ให้รายจ่ายที่มาจากการชำระหนี้ (query เดียวต่อชุด)
+    private void fillDebtNames(List<TransactionListResponse> rows) {
+        Set<Long> paymentIds = rows.stream()
+                .map(TransactionListResponse::getDebtPaymentId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (paymentIds.isEmpty()) {
+            return;
+        }
+        Map<Long, Object[]> byPayment = new HashMap<>();
+        for (Object[] row : debtPaymentRepository.findDebtNames(paymentIds)) {
+            byPayment.put((Long) row[0], row);
+        }
+        for (TransactionListResponse r : rows) {
+            Object[] row = r.getDebtPaymentId() != null ? byPayment.get(r.getDebtPaymentId()) : null;
+            if (row != null) {
+                r.setDebtId((Long) row[1]);
+                r.setDebtName((String) row[2]);
+                r.setDebtLocked(!Boolean.TRUE.equals(row[3]));
+            }
+        }
+    }
+
     // แปลง Transaction entity -> DTO (ใช้ร่วมกันหลายที่)
     private TransactionListResponse toListResponse(Transaction t) {
         TransactionListResponse response = new TransactionListResponse();
@@ -290,6 +355,7 @@ public class TransactionService {
         response.setDescription(t.getDescription());
         response.setTransactionDate(t.getTransactionDate());
         response.setSavingsMovementId(t.getSavingsMovementId());
+        response.setDebtPaymentId(t.getDebtPaymentId());
 
         if (t.getCategoryId() != null) {
             response.setCategoryId(t.getCategoryId().getId());
@@ -337,6 +403,7 @@ public class TransactionService {
                 .map(this::toListResponse)
                 .collect(Collectors.toList());
         fillSavingsGoalNames(content);
+        fillDebtNames(content);
 
         // ยอดสรุปแยกตามประเภท (คิดจากทั้งชุดที่ตรงเงื่อนไข ไม่ใช่แค่หน้านี้)
         BigDecimal totalIncome = BigDecimal.ZERO;
@@ -386,6 +453,9 @@ public class TransactionService {
         }
         if (transactionRepository.countSavingsSpend(ids) > 0) {
             throw new RuntimeException("มีรายการที่มาจากเงินออม ลบได้ที่หน้าเงินออมเท่านั้น");
+        }
+        if (transactionRepository.countLockedDebtPayments(ids) > 0) {
+            throw new RuntimeException("มีรายการที่มาจากการชำระหนี้ ลบได้ที่หน้าติดตามหนี้เท่านั้น");
         }
         return transactionRepository.softDeleteByIds(ids, userId);
     }

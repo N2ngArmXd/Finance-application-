@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Search, X, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
-    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank,
+    Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank, HandCoins,
 } from 'lucide-react';
 import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime, txnTone, isSavingType } from '../utils/format';
 import { CategoryAvatar } from '../utils/categoryIcons';
@@ -66,7 +66,7 @@ const chipTone = (on) => (on
 const presetChip = (on) =>
     `h-9 px-3.5 rounded-full text-sm flex items-center gap-1.5 transition-colors ${chipTone(on)} ${on ? '' : 'hover:bg-slate-50'}`;
 
-const HistoryPage = ({ onNavigate, onOpenSavings }) => {
+const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(false);
@@ -399,6 +399,9 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
 
     const editingItem = editing?.item;
     const editingFromSavings = editingItem?.savingsMovementId != null;
+    // รายจ่ายชำระหนี้ที่หนี้ยังอยู่ — แก้/ลบที่หน้าติดตามหนี้ (หนี้ที่ลบไปแล้วแก้ที่นี่ได้ตามปกติ)
+    const editingFromDebt = !editingFromSavings && !!editingItem?.debtLocked;
+    const editingLocked = editingFromSavings || editingFromDebt;
 
     return (
         <div className="max-w-[928px] mx-auto flex flex-col gap-4 animate-zoom-in">
@@ -785,8 +788,22 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
                             </span>
                         </div>
 
-                        {editingFromSavings ? (
+                        {editingLocked ? (
                             <div className="flex-1 overflow-y-auto px-4 sm:px-6 pt-5 pb-6 flex flex-col gap-4">
+                                {editingFromDebt ? (
+                                <div className="flex gap-3 items-start p-4 rounded-xl bg-rose-50">
+                                    <span className="w-9 h-9 shrink-0 rounded-full bg-white flex items-center justify-center">
+                                        <HandCoins size={18} className="text-rose-700" />
+                                    </span>
+                                    <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                                        <span className="text-sm font-semibold text-rose-700">รายจ่ายจากการชำระหนี้</span>
+                                        <span className="text-[13px] leading-[18px] text-slate-700">
+                                            ติดหนี้ <b className="font-semibold">{editingItem.debtName || '-'}</b>
+                                            {' '}แก้ไขหรือลบได้ที่หน้าติดตามหนี้ เพื่อให้ยอดหนี้คงเหลือตรงกัน
+                                        </span>
+                                    </div>
+                                </div>
+                                ) : (
                                 <div className="flex gap-3 items-start p-4 rounded-xl bg-gold-50">
                                     <span className="w-9 h-9 shrink-0 rounded-full bg-white flex items-center justify-center">
                                         <PiggyBank size={18} className="text-gold-700" />
@@ -804,6 +821,7 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
                                         </span>
                                     </div>
                                 </div>
+                                )}
                                 {editingItem.description && (
                                     <div className="flex flex-col gap-1">
                                         <span className="text-xs text-slate-500">รายละเอียด</span>
@@ -836,7 +854,7 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
                         </div>
                         )}
 
-                        {editingFromSavings ? (
+                        {editingLocked ? (
                             <div className="shrink-0 flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-200">
                                 <button
                                     onClick={closeEdit}
@@ -844,12 +862,21 @@ const HistoryPage = ({ onNavigate, onOpenSavings }) => {
                                 >
                                     ปิด
                                 </button>
+                                {editingFromDebt ? (
+                                <button
+                                    onClick={() => onOpenDebt && onOpenDebt(editingItem.debtId)}
+                                    className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
+                                >
+                                    <HandCoins size={18} /> จัดการที่หน้าติดตามหนี้
+                                </button>
+                                ) : (
                                 <button
                                     onClick={() => onOpenSavings && onOpenSavings(editingItem.savingsGoalId)}
                                     className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2"
                                 >
                                     <PiggyBank size={18} /> จัดการที่หน้าเงินออม
                                 </button>
+                                )}
                             </div>
                         ) : (
                         <div className="shrink-0 flex gap-3 px-4 sm:px-6 py-4 border-t border-slate-200">

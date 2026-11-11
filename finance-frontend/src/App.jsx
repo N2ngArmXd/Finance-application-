@@ -8,6 +8,7 @@ import HistoryPage from './components/HistoryPage';
 import Installments from './components/Installments';
 import DashboardPage from './components/DashboardPage';
 import Savings from './components/Savings';
+import Debts from './components/Debts';
 import AppFooter from './components/AppFooter';
 import { AUTH_EXPIRED_EVENT, fetchCurrentUser, logout } from './utils/auth';
 
@@ -29,6 +30,13 @@ function App() {
   const openSavings = (savingsGoalId = null) => {
     setSavingsFocusId(savingsGoalId);
     setActivePage('savings');
+  };
+
+  // รายการหนี้ที่ต้องไฮไลต์เมื่อกดมาจากหน้าอื่น (ประวัติธุรกรรม)
+  const [debtFocusId, setDebtFocusId] = useState(null);
+  const openDebt = (debtId = null) => {
+    setDebtFocusId(debtId);
+    setActivePage('debts');
   };
 
   // เปิดแอป: ให้ backend ตรวจ cookie (JWT) — ไม่เชื่อข้อมูลใน localStorage
@@ -96,12 +104,18 @@ function App() {
             <TransactionPage onNavigate={setActivePage} />
           )}
           {activePage === 'history' && (
-            <HistoryPage onNavigate={setActivePage} onOpenSavings={openSavings} />
+            <HistoryPage onNavigate={setActivePage} onOpenSavings={openSavings} onOpenDebt={openDebt} />
           )}
           {activePage === 'savings' && (
             <Savings
               focusId={savingsFocusId}
               onFocusHandled={() => setSavingsFocusId(null)}
+            />
+          )}
+          {activePage === 'debts' && (
+            <Debts
+              focusId={debtFocusId}
+              onFocusHandled={() => setDebtFocusId(null)}
             />
           )}
           {activePage === 'installment' && (
