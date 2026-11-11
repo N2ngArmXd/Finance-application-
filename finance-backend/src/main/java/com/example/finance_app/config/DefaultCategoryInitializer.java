@@ -56,6 +56,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "โบนัส", "INCOME", "Coins" },
             { "ลงทุน", "INCOME", "TrendingUp" },
             { "ของขวัญ", "INCOME", "Gift" },
+            { "ครอบครัวให้", "INCOME", "Users" },
             { "เงินคืน", "INCOME", "RotateCcw" },
             { "อื่นๆ", "INCOME", "Circle" },
             { SAVING_IN_CATEGORY_NAME, SAVING_IN, "PiggyBank" },
