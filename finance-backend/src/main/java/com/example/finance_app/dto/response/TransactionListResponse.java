@@ -27,6 +27,35 @@ public class TransactionListResponse {
     private Long debtId;
     private String debtName;
     private boolean debtLocked;
+    private Long debtGroupId; // รายรับเงินคืนจากบิลหาร -> เปิดบิลนั้นได้
+
+    // รายจ่ายยอดเต็มของบิลหาร (null = ไม่ใช่) — หน้าประวัติแสดงป้าย + ลิงก์ไปบิล และห้ามแก้/ลบ
+    private Long billGroupId;
+    private String billTitle;
+
+    public Long getBillGroupId() {
+        return billGroupId;
+    }
+
+    public void setBillGroupId(Long billGroupId) {
+        this.billGroupId = billGroupId;
+    }
+
+    public String getBillTitle() {
+        return billTitle;
+    }
+
+    public void setBillTitle(String billTitle) {
+        this.billTitle = billTitle;
+    }
+
+    public Long getDebtGroupId() {
+        return debtGroupId;
+    }
+
+    public void setDebtGroupId(Long debtGroupId) {
+        this.debtGroupId = debtGroupId;
+    }
 
     public Long getDebtPaymentId() {
         return debtPaymentId;

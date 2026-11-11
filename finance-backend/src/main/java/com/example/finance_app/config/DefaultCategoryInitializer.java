@@ -28,6 +28,9 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
     // หมวดของรายจ่ายที่สร้างอัตโนมัติตอนกดชำระหนี้ — ดู DebtService.pay
     public static final String DEBT_CATEGORY_NAME = "ชำระหนี้";
 
+    // หมวดรายรับที่สร้างอัตโนมัติตอนเพื่อนคืนเงินบิลหาร — ดู DebtService.pay (หนี้ทิศ RECEIVABLE)
+    public static final String REFUND_CATEGORY_NAME = "เงินคืน";
+
     // ประเภทหมวดของการย้ายเงินเข้า/ออกกระปุก — ไม่ใช่รายรับ/รายจ่าย (dashboard/ยอดรายรับรายจ่ายไม่นับ)
     // ดู SavingsService และ TransactionService.createSavingsTransfer
     public static final String SAVING_IN = "SAVING_IN";
@@ -57,7 +60,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "ลงทุน", "INCOME", "TrendingUp" },
             { "ของขวัญ", "INCOME", "Gift" },
             { "ครอบครัวให้", "INCOME", "Users" },
-            { "เงินคืน", "INCOME", "RotateCcw" },
+            { REFUND_CATEGORY_NAME, "INCOME", "RotateCcw" },
             { "อื่นๆ", "INCOME", "Circle" },
             { SAVING_IN_CATEGORY_NAME, SAVING_IN, "PiggyBank" },
             { SAVING_OUT_CATEGORY_NAME, SAVING_OUT, "ArrowUpFromLine" },

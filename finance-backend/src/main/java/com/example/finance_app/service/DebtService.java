@@ -17,8 +17,10 @@ import com.example.finance_app.dto.request.DebtRequest;
 import com.example.finance_app.dto.response.DebtPaymentResponse;
 import com.example.finance_app.dto.response.DebtResponse;
 import com.example.finance_app.entity.Debt;
+import com.example.finance_app.entity.DebtGroup;
 import com.example.finance_app.entity.DebtPayment;
 import com.example.finance_app.entity.Transaction;
+import com.example.finance_app.repository.DebtGroupRepository;
 import com.example.finance_app.repository.DebtPaymentRepository;
 import com.example.finance_app.repository.DebtRepository;
 
@@ -36,6 +38,8 @@ public class DebtService {
     private DebtPaymentRepository paymentRepository;
     @Autowired
     private TransactionService transactionService;
+    @Autowired
+    private DebtGroupRepository groupRepository;
 
     // ---------- หนี้ ----------
 
@@ -46,7 +50,7 @@ public class DebtService {
         for (Object[] row : paymentRepository.sumByDebt(userId)) {
             sums.put((Long) row[0], row);
         }
-        return debtRepository.findActiveByUserId(userId).stream()
+        return debtRepository.findActivePayablesByUserId(userId).stream()
                 .map(d -> toDebtResponse(d, sums.get(d.getDebtId())))
                 .collect(Collectors.toList());
     }
@@ -59,6 +63,7 @@ public class DebtService {
         Debt debt = new Debt();
         debt.setUserId(req.getUserId());
         applyDebtFields(debt, req);
+        debt.setDirection(Debt.PAYABLE);
         debt.setStatus(Debt.ACTIVE);
         debt.setCreatedAt(LocalDateTime.now());
         return toDebtResponse(debtRepository.save(debt), null);
@@ -67,6 +72,7 @@ public class DebtService {
     @Transactional
     public DebtResponse updateDebt(DebtRequest req) {
         Debt debt = loadDebt(req.getDebtId(), req.getUserId());
+        assertNotBillMember(debt);
         validateDebtFields(req);
 
         BigDecimal paid = paymentRepository.sumPaid(debt.getDebtId());
@@ -83,6 +89,7 @@ public class DebtService {
     @Transactional
     public void deleteDebt(DebtRequest req) {
         Debt debt = loadDebt(req.getDebtId(), req.getUserId());
+        assertNotBillMember(debt);
         debt.setDeleted(true);
         debtRepository.save(debt);
     }
@@ -97,10 +104,11 @@ public class DebtService {
         BigDecimal paid = paymentRepository.sumPaid(debt.getDebtId());
         BigDecimal remaining = debt.getTotalAmount().subtract(paid);
         if (remaining.signum() <= 0) {
-            throw new IllegalArgumentException("หนี้รายการนี้ชำระครบแล้ว");
+            throw new IllegalArgumentException(debt.isReceivable() ? "คนนี้คืนเงินครบแล้ว" : "หนี้รายการนี้ชำระครบแล้ว");
         }
         if (req.getAmount().compareTo(remaining) > 0) {
-            throw new IllegalArgumentException("จ่ายเกินยอดคงเหลือ (คงเหลือ " + remaining.toPlainString() + " บาท)");
+            throw new IllegalArgumentException((debt.isReceivable() ? "รับเงินเกินยอดที่ค้าง" : "จ่ายเกินยอดคงเหลือ")
+                    + " (คงเหลือ " + remaining.toPlainString() + " บาท)");
         }
 
         DebtPayment p = new DebtPayment();
@@ -112,9 +120,13 @@ public class DebtService {
         p.setCreatedAt(LocalDateTime.now());
         p = paymentRepository.save(p);
 
-        // บันทึกการจ่ายก่อนเพื่อให้ได้ id ไปผูกกับรายจ่าย
-        Transaction txn = transactionService.createDebtPayment(debt.getUserId(), p.getDebtPaymentId(),
-                p.getAmount(), p.getPaymentDate(), describe(debt, p));
+        // บันทึกการจ่ายก่อนเพื่อให้ได้ id ไปผูกกับรายการเงิน
+        // เราจ่ายหนี้ = รายจ่าย "ชำระหนี้" · เพื่อนคืนเงิน (บิลหาร) = รายรับ "เงินคืน"
+        Transaction txn = debt.isReceivable()
+                ? transactionService.createDebtReceipt(debt.getUserId(), p.getDebtPaymentId(),
+                        p.getAmount(), p.getPaymentDate(), describe(debt, p))
+                : transactionService.createDebtPayment(debt.getUserId(), p.getDebtPaymentId(),
+                        p.getAmount(), p.getPaymentDate(), describe(debt, p));
         p.setTransactionId(txn.getId());
         p = paymentRepository.save(p);
 
@@ -176,6 +188,28 @@ public class DebtService {
         return paymentRepository.findByDebt(debt.getDebtId()).stream()
                 .map(this::toPaymentResponse)
                 .collect(Collectors.toList());
+    }
+
+    // ---------- ใช้ร่วมกับ BillSplitService ----------
+
+    // ยอดที่ได้รับ/จ่ายไปแล้วของหนี้ก้อนนี้
+    BigDecimal paidOf(Debt debt) {
+        return paymentRepository.sumPaid(debt.getDebtId());
+    }
+
+    // คำนวณสถานะใหม่หลังยอดหนี้เปลี่ยน (เช่น แก้ยอดคนในบิลหาร)
+    void refreshStatusOf(Debt debt) {
+        refreshStatus(debt, paidOf(debt));
+    }
+
+    // เขียนรายละเอียดของรายการเงินที่ผูกกับการรับ/จ่ายทุกครั้งใหม่ (หลังเปลี่ยนชื่อคน/ชื่อบิล)
+    void refreshPaymentDescriptions(Debt debt) {
+        for (DebtPayment p : paymentRepository.findByDebt(debt.getDebtId())) {
+            if (p.getTransactionId() != null) {
+                transactionService.updateLinkedTransaction(p.getTransactionId(), p.getAmount(),
+                        p.getPaymentDate(), describe(debt, p));
+            }
+        }
     }
 
     // ---------- helpers ----------
@@ -261,10 +295,25 @@ public class DebtService {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
 
-    // รายละเอียดของรายจ่ายที่ระบบสร้าง เช่น "ชำระหนี้: พี่เอ — งวดแรก"
+    // รายละเอียดของรายการที่ระบบสร้าง เช่น "ชำระหนี้: พี่เอ — งวดแรก" / "รับเงินคืน: เอ · ทริปเขาใหญ่"
     private String describe(Debt debt, DebtPayment p) {
-        String base = "ชำระหนี้: " + debt.getCreditorName();
+        String base;
+        if (debt.isReceivable()) {
+            String title = debt.getGroupId() != null
+                    ? groupRepository.findById(debt.getGroupId()).map(DebtGroup::getTitle).orElse(null)
+                    : null;
+            base = "รับเงินคืน: " + debt.getCreditorName() + (title != null ? " · " + title : "");
+        } else {
+            base = "ชำระหนี้: " + debt.getCreditorName();
+        }
         return p.getNote() != null ? base + " — " + p.getNote() : base;
+    }
+
+    // คนในบิลหารแก้/ลบทีละคนไม่ได้ (ยอดรวมต้องตรงกับบิล) — จัดการที่บิล
+    private void assertNotBillMember(Debt debt) {
+        if (debt.getGroupId() != null) {
+            throw new IllegalArgumentException("รายการนี้มาจากบิลหาร จัดการได้ที่บิลนั้น");
+        }
     }
 
     private DebtResponse findDebtResponse(Debt debt) {
@@ -274,12 +323,15 @@ public class DebtService {
                 .orElseGet(() -> toDebtResponse(debt, null));
     }
 
-    private DebtResponse toDebtResponse(Debt d, Object[] sum) {
+    // ใช้ร่วมกับ BillSplitService (sum = [debtId, sum, count, lastDate] จาก sumByDebt หรือ null)
+    DebtResponse toDebtResponse(Debt d, Object[] sum) {
         BigDecimal paid = sum != null && sum[1] != null ? new BigDecimal(sum[1].toString()) : BigDecimal.ZERO;
         BigDecimal remaining = d.getTotalAmount().subtract(paid).max(BigDecimal.ZERO);
 
         DebtResponse r = new DebtResponse();
         r.setDebtId(d.getDebtId());
+        r.setDirection(d.isReceivable() ? Debt.RECEIVABLE : Debt.PAYABLE);
+        r.setGroupId(d.getGroupId());
         r.setCreditorName(d.getCreditorName());
         r.setDescription(d.getDescription());
         r.setTotalAmount(d.getTotalAmount());

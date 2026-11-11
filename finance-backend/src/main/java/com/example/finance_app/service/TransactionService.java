@@ -27,6 +27,7 @@ import com.example.finance_app.entity.Categories;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.CategoriesRepository;
+import com.example.finance_app.repository.DebtGroupRepository;
 import com.example.finance_app.repository.DebtPaymentRepository;
 import com.example.finance_app.repository.SavingsMovementRepository;
 import com.example.finance_app.repository.TransactionRepository;
@@ -47,6 +48,8 @@ public class TransactionService {
     private SavingsMovementRepository savingsMovementRepository;
     @Autowired
     private DebtPaymentRepository debtPaymentRepository;
+    @Autowired
+    private DebtGroupRepository debtGroupRepository;
 
     // Create Transaction
     public Transaction createTransaction(TransactionRequest request) {
@@ -168,6 +171,39 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    // สร้างรายรับหมวด "เงินคืน" อัตโนมัติตอนเพื่อนคืนเงินบิลหาร — ลิงก์กลับไปที่รายการรับเงิน
+    public Transaction createDebtReceipt(Long userId, Long debtPaymentId, BigDecimal amount,
+            LocalDateTime date, String description) {
+
+        Categories category = categoriesRepository
+                .findActiveByNameAndType(DefaultCategoryInitializer.REFUND_CATEGORY_NAME, "INCOME")
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบหมวดหมู่เงินคืน"));
+        Transaction transaction = newSystemTransaction(userId, category, amount, date, description);
+        transaction.setDebtPaymentId(debtPaymentId);
+        return transactionRepository.save(transaction);
+    }
+
+    // สร้างรายจ่ายตามหมวดที่เลือก (เช่น ยอดเต็มของบิลหาร) — แก้/ลบที่หน้าประวัติได้ตามปกติ
+    public Transaction createLinkedExpense(Long userId, Long categoryId, BigDecimal amount,
+            LocalDateTime date, String description) {
+        return transactionRepository.save(
+                newSystemTransaction(userId, findExpenseCategory(categoryId), amount, date, description));
+    }
+
+    private Transaction newSystemTransaction(Long userId, Categories category, BigDecimal amount,
+            LocalDateTime date, String description) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบผู้ใช้ดังกล่าว"));
+        Transaction transaction = new Transaction();
+        transaction.setId(generateUniqueTransactionId(category.getType(), date));
+        transaction.setUserId(user);
+        transaction.setCategoryId(category);
+        transaction.setAmount(amount);
+        transaction.setDescription(description);
+        transaction.setTransactionDate(date);
+        return transaction;
+    }
+
     // แก้ยอด/วันที่/รายละเอียดของ transaction ที่ระบบสร้าง (เช่น รายจ่ายชำระหนี้)
     public void updateLinkedTransaction(Long transactionId, BigDecimal amount, LocalDateTime date,
             String description) {
@@ -224,6 +260,10 @@ public class TransactionService {
         if (t.getDebtPaymentId() != null
                 && transactionRepository.countLockedDebtPayments(List.of(t.getId())) > 0) {
             throw new RuntimeException("รายการนี้มาจากการชำระหนี้ แก้ไขหรือลบได้ที่หน้าติดตามหนี้");
+        }
+        // รายจ่ายยอดเต็มของบิลหาร — แก้ที่บิล (ยอดบิล/หมวด/วันที่) ไม่งั้นบิลกับรายจ่ายจะไม่ตรงกัน
+        if (debtGroupRepository.countActiveByTransactionIds(List.of(t.getId())) > 0) {
+            throw new RuntimeException("รายการนี้เป็นรายจ่ายของบิลหาร แก้ไขได้ที่หน้าติดตามหนี้ (เขาติดหนี้เรา)");
         }
     }
 
@@ -324,8 +364,28 @@ public class TransactionService {
         }
     }
 
+    // เติมชื่อบิลให้รายจ่ายยอดเต็มของบิลหาร (query เดียวต่อชุด)
+    private void fillBillNames(List<TransactionListResponse> rows) {
+        Set<Long> ids = rows.stream().map(TransactionListResponse::getId).collect(Collectors.toSet());
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<Long, Object[]> byTxn = new HashMap<>();
+        for (Object[] row : debtGroupRepository.findActiveByTransactionIds(ids)) {
+            byTxn.put((Long) row[0], row);
+        }
+        for (TransactionListResponse r : rows) {
+            Object[] row = byTxn.get(r.getId());
+            if (row != null) {
+                r.setBillGroupId((Long) row[1]);
+                r.setBillTitle((String) row[2]);
+            }
+        }
+    }
+
     // เติมชื่อเจ้าหนี้ให้รายจ่ายที่มาจากการชำระหนี้ (query เดียวต่อชุด)
     private void fillDebtNames(List<TransactionListResponse> rows) {
+        fillBillNames(rows);
         Set<Long> paymentIds = rows.stream()
                 .map(TransactionListResponse::getDebtPaymentId)
                 .filter(Objects::nonNull)
@@ -343,6 +403,7 @@ public class TransactionService {
                 r.setDebtId((Long) row[1]);
                 r.setDebtName((String) row[2]);
                 r.setDebtLocked(!Boolean.TRUE.equals(row[3]));
+                r.setDebtGroupId((Long) row[4]);
             }
         }
     }
@@ -456,6 +517,9 @@ public class TransactionService {
         }
         if (transactionRepository.countLockedDebtPayments(ids) > 0) {
             throw new RuntimeException("มีรายการที่มาจากการชำระหนี้ ลบได้ที่หน้าติดตามหนี้เท่านั้น");
+        }
+        if (debtGroupRepository.countActiveByTransactionIds(ids) > 0) {
+            throw new RuntimeException("มีรายจ่ายของบิลหาร ลบได้ที่หน้าติดตามหนี้เท่านั้น");
         }
         return transactionRepository.softDeleteByIds(ids, userId);
     }

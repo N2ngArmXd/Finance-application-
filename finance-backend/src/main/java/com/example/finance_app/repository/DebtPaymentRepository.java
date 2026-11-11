@@ -32,8 +32,9 @@ public interface DebtPaymentRepository extends JpaRepository<DebtPayment, Long> 
             + "ORDER BY p.paymentDate DESC, p.debtPaymentId DESC")
     List<DebtPayment> findByDebt(@Param("debtId") Long debtId);
 
-    // ชื่อเจ้าหนี้ของรายจ่ายชำระหนี้ (หน้าประวัติธุรกรรม) -> [paymentId, debtId, creditorName, debtDeleted]
-    @Query("SELECT p.debtPaymentId, d.debtId, d.creditorName, d.isDeleted FROM DebtPayment p, Debt d "
+    // ชื่อเจ้าหนี้/คนที่คืนเงิน ของรายการจากหน้าติดตามหนี้ (หน้าประวัติธุรกรรม)
+    // -> [paymentId, debtId, creditorName, debtDeleted, groupId]
+    @Query("SELECT p.debtPaymentId, d.debtId, d.creditorName, d.isDeleted, d.groupId FROM DebtPayment p, Debt d "
             + "WHERE d.debtId = p.debtId AND p.debtPaymentId IN :paymentIds")
     List<Object[]> findDebtNames(@Param("paymentIds") Collection<Long> paymentIds);
 }

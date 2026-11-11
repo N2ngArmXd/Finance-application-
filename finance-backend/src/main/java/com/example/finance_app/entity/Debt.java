@@ -22,6 +22,21 @@ public class Debt {
     public static final String ACTIVE = "ACTIVE";
     public static final String PAID = "PAID";
 
+    // ทิศของหนี้: PAYABLE = เราติดหนี้เขา (ข้อมูลเก่า = null นับเป็น PAYABLE) · RECEIVABLE = เขาติดหนี้เรา
+    public static final String PAYABLE = "PAYABLE";
+    public static final String RECEIVABLE = "RECEIVABLE";
+
+    @Column(name = "direction", length = 20)
+    private String direction;
+
+    // บิลหารที่หนี้นี้มาจาก (เฉพาะ RECEIVABLE) — จัดการผ่านบิล ไม่ใช่ทีละรายการ
+    @Column(name = "group_id")
+    private Long groupId;
+
+    public boolean isReceivable() {
+        return RECEIVABLE.equals(direction);
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "debt_id")
