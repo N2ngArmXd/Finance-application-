@@ -12,15 +12,19 @@ import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.example.finance_app.dto.request.DebtIncreaseRequest;
 import com.example.finance_app.dto.request.DebtPaymentRequest;
 import com.example.finance_app.dto.request.DebtRequest;
+import com.example.finance_app.dto.response.DebtIncreaseResponse;
 import com.example.finance_app.dto.response.DebtPaymentResponse;
 import com.example.finance_app.dto.response.DebtResponse;
 import com.example.finance_app.entity.Debt;
 import com.example.finance_app.entity.DebtGroup;
+import com.example.finance_app.entity.DebtIncrease;
 import com.example.finance_app.entity.DebtPayment;
 import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.repository.DebtGroupRepository;
+import com.example.finance_app.repository.DebtIncreaseRepository;
 import com.example.finance_app.repository.DebtPaymentRepository;
 import com.example.finance_app.repository.DebtRepository;
 
@@ -40,6 +44,8 @@ public class DebtService {
     private TransactionService transactionService;
     @Autowired
     private DebtGroupRepository groupRepository;
+    @Autowired
+    private DebtIncreaseRepository increaseRepository;
 
     // ---------- หนี้ ----------
 
@@ -190,6 +196,100 @@ public class DebtService {
                 .collect(Collectors.toList());
     }
 
+    // ---------- เพิ่มยอดหนี้ (ติดหนี้เพิ่ม) ----------
+    // ยอดบวกเข้า totalAmount ตรงๆ + สร้างรายการหมวด "เพิ่มยอดหนี้" ในประวัติ (ไม่นับเป็นรายรับ/รายจ่าย)
+
+    @Transactional
+    public DebtIncreaseResponse increase(DebtIncreaseRequest req) {
+        Debt debt = loadDebt(req.getDebtId(), req.getUserId());
+        assertPayable(debt);
+        requirePositive(req.getAmount());
+        String note = requireNote(req.getNote());
+        if (Debt.PAID.equals(debt.getStatus())) {
+            throw new IllegalArgumentException("หนี้รายการนี้ชำระครบแล้ว เพิ่มยอดไม่ได้ (สร้างรายการหนี้ใหม่แทน)");
+        }
+
+        DebtIncrease inc = new DebtIncrease();
+        inc.setDebtId(debt.getDebtId());
+        inc.setUserId(debt.getUserId());
+        inc.setAmount(req.getAmount());
+        inc.setIncreaseDate(req.getIncreaseDate() != null ? req.getIncreaseDate() : LocalDateTime.now());
+        inc.setNote(note);
+        inc.setCreatedAt(LocalDateTime.now());
+        inc = increaseRepository.save(inc);
+
+        Transaction txn = transactionService.createDebtIncrease(debt.getUserId(), inc.getDebtIncreaseId(),
+                inc.getAmount(), inc.getIncreaseDate(), describe(debt, inc));
+        inc.setTransactionId(txn.getId());
+        inc = increaseRepository.save(inc);
+
+        debt.setTotalAmount(debt.getTotalAmount().add(inc.getAmount()));
+        refreshStatus(debt, paymentRepository.sumPaid(debt.getDebtId()));
+        debtRepository.save(debt);
+        return toIncreaseResponse(inc);
+    }
+
+    // แก้ยอด/วันที่/ที่มา — ยอดหนี้ปรับตามส่วนต่าง และต้องไม่น้อยกว่ายอดที่จ่ายไปแล้ว
+    @Transactional
+    public DebtIncreaseResponse updateIncrease(DebtIncreaseRequest req) {
+        DebtIncrease inc = loadIncrease(req.getDebtIncreaseId(), req.getUserId());
+        Debt debt = loadDebt(inc.getDebtId(), inc.getUserId());
+        requirePositive(req.getAmount());
+        String note = requireNote(req.getNote());
+
+        BigDecimal newTotal = debt.getTotalAmount().subtract(inc.getAmount()).add(req.getAmount());
+        BigDecimal paid = paymentRepository.sumPaid(debt.getDebtId());
+        assertTotalCoversPaid(newTotal, paid);
+
+        inc.setAmount(req.getAmount());
+        if (req.getIncreaseDate() != null) {
+            inc.setIncreaseDate(req.getIncreaseDate());
+        }
+        inc.setNote(note);
+        inc = increaseRepository.save(inc);
+
+        if (inc.getTransactionId() != null) {
+            transactionService.updateLinkedTransaction(inc.getTransactionId(), inc.getAmount(),
+                    inc.getIncreaseDate(), describe(debt, inc));
+        }
+
+        debt.setTotalAmount(newTotal);
+        refreshStatus(debt, paid);
+        debtRepository.save(debt);
+        return toIncreaseResponse(inc);
+    }
+
+    // ลบการเพิ่มยอด (soft delete) + ลบรายการในประวัติ ยอดหนี้ลดกลับ
+    @Transactional
+    public void deleteIncrease(DebtIncreaseRequest req) {
+        DebtIncrease inc = loadIncrease(req.getDebtIncreaseId(), req.getUserId());
+        Debt debt = loadDebt(inc.getDebtId(), inc.getUserId());
+
+        BigDecimal newTotal = debt.getTotalAmount().subtract(inc.getAmount());
+        BigDecimal paid = paymentRepository.sumPaid(debt.getDebtId());
+        if (newTotal.signum() <= 0) {
+            throw new IllegalArgumentException("ลบไม่ได้ ยอดหนี้จะเหลือ 0 (ลบทั้งรายการหนี้แทน)");
+        }
+        assertTotalCoversPaid(newTotal, paid);
+
+        inc.setDeleted(true);
+        increaseRepository.save(inc);
+        if (inc.getTransactionId() != null) {
+            transactionService.cancelLinkedTransaction(inc.getTransactionId());
+        }
+
+        debt.setTotalAmount(newTotal);
+        refreshStatus(debt, paid);
+        debtRepository.save(debt);
+    }
+
+    public List<DebtIncreaseResponse> listIncreases(DebtIncreaseRequest req) {
+        Debt debt = loadDebt(req.getDebtId(), req.getUserId());
+        return increaseRepository.findByDebt(debt.getDebtId()).stream()
+                .map(this::toIncreaseResponse)
+                .collect(Collectors.toList());
+    }
+
     // ---------- ใช้ร่วมกับ BillSplitService ----------
 
     // ยอดที่ได้รับ/จ่ายไปแล้วของหนี้ก้อนนี้
@@ -238,6 +338,44 @@ public class DebtService {
             throw new IllegalArgumentException("ไม่มีสิทธิ์จัดการรายการนี้");
         }
         return debt;
+    }
+
+    private DebtIncrease loadIncrease(Long increaseId, Long userId) {
+        requireUser(userId);
+        if (increaseId == null) {
+            throw new IllegalArgumentException("ไม่พบรหัสรายการเพิ่มยอดหนี้");
+        }
+        DebtIncrease inc = increaseRepository.findActiveById(increaseId)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบรายการเพิ่มยอดหนี้"));
+        if (!userId.equals(inc.getUserId())) {
+            throw new IllegalArgumentException("ไม่มีสิทธิ์จัดการรายการนี้");
+        }
+        return inc;
+    }
+
+    // เพิ่มยอดได้เฉพาะหนี้ที่เราติดเขา (บิลหารจัดการที่บิล)
+    private void assertPayable(Debt debt) {
+        if (debt.isReceivable() || debt.getGroupId() != null) {
+            throw new IllegalArgumentException("รายการนี้มาจากบิลหาร จัดการได้ที่บิลนั้น");
+        }
+    }
+
+    private void assertTotalCoversPaid(BigDecimal total, BigDecimal paid) {
+        if (total.compareTo(paid) < 0) {
+            throw new IllegalArgumentException("ยอดหนี้ต้องไม่น้อยกว่ายอดที่จ่ายไปแล้ว (" + paid.toPlainString() + " บาท)");
+        }
+    }
+
+    // ที่มาของยอดที่เพิ่ม บังคับกรอก (เหตุผลหลักของฟีเจอร์นี้)
+    private String requireNote(String note) {
+        String n = trimToNull(note);
+        if (n == null) {
+            throw new IllegalArgumentException("กรุณาระบุที่มาของยอดหนี้ที่เพิ่ม");
+        }
+        if (n.length() > 255) {
+            throw new IllegalArgumentException("ที่มายาวเกิน 255 ตัวอักษร");
+        }
+        return n;
     }
 
     private DebtPayment loadPayment(Long paymentId, Long userId) {
@@ -309,6 +447,12 @@ public class DebtService {
         return p.getNote() != null ? base + " — " + p.getNote() : base;
     }
 
+    // รายละเอียดของรายการเพิ่มยอด เช่น "เพิ่มยอดหนี้: พี่เอ — ยืมค่าข้าวเพิ่ม"
+    private String describe(Debt debt, DebtIncrease inc) {
+        String base = "เพิ่มยอดหนี้: " + debt.getCreditorName();
+        return inc.getNote() != null ? base + " — " + inc.getNote() : base;
+    }
+
     // คนในบิลหารแก้/ลบทีละคนไม่ได้ (ยอดรวมต้องตรงกับบิล) — จัดการที่บิล
     private void assertNotBillMember(Debt debt) {
         if (debt.getGroupId() != null) {
@@ -349,6 +493,17 @@ public class DebtService {
         r.setLastPaymentDate(sum != null ? (LocalDateTime) sum[3] : null);
         r.setCreatedAt(d.getCreatedAt());
         r.setPaidOffAt(d.getPaidOffAt());
+        return r;
+    }
+
+    private DebtIncreaseResponse toIncreaseResponse(DebtIncrease inc) {
+        DebtIncreaseResponse r = new DebtIncreaseResponse();
+        r.setDebtIncreaseId(inc.getDebtIncreaseId());
+        r.setDebtId(inc.getDebtId());
+        r.setAmount(inc.getAmount());
+        r.setIncreaseDate(inc.getIncreaseDate());
+        r.setNote(inc.getNote());
+        r.setTransactionId(inc.getTransactionId());
         return r;
     }
 

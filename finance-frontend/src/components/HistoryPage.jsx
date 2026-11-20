@@ -3,7 +3,7 @@ import {
     Search, X, ArrowUp, ArrowDown, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight,
     Calendar, Filter, Trash2, Loader2, Inbox, SearchX, CloudOff, RefreshCw, Plus, TrendingDown, PiggyBank, HandCoins, Users,
 } from 'lucide-react';
-import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime, txnTone, isSavingType } from '../utils/format';
+import { formatTxnId, formatMoney, formatSigned, toDateInput, formatDayLabel, formatTime, txnTone, isSavingType, isDebtAddType } from '../utils/format';
 import { CategoryAvatar } from '../utils/categoryIcons';
 import TxnForm from './TxnForm';
 import TxnRow from './TxnRow';
@@ -400,7 +400,9 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
     const editingItem = editing?.item;
     const editingFromSavings = editingItem?.savingsMovementId != null;
     // รายจ่ายชำระหนี้ที่หนี้ยังอยู่ — แก้/ลบที่หน้าติดตามหนี้ (หนี้ที่ลบไปแล้วแก้ที่นี่ได้ตามปกติ)
-    const editingFromDebt = !editingFromSavings && !!editingItem?.debtLocked;
+    // รายการเพิ่มยอดหนี้ — ไม่ใช่รายรับ/รายจ่าย แก้ผ่านฟอร์มนี้ไม่ได้เสมอ (หนี้ที่ลบแล้ว ลบรายการได้อย่างเดียว)
+    const editingDebtAdd = isDebtAddType(editingItem?.categoryType);
+    const editingFromDebt = !editingFromSavings && (!!editingItem?.debtLocked || editingDebtAdd);
     // รายจ่ายยอดเต็มของบิลหาร (บิลยังอยู่) — แก้ที่บิล
     const editingFromBill = !editingFromSavings && !editingFromDebt && editingItem?.billGroupId != null;
     const editingLocked = editingFromSavings || editingFromDebt || editingFromBill;
@@ -798,7 +800,18 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
                                         <HandCoins size={18} className="text-rose-700" />
                                     </span>
                                     <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                                        {editingItem.categoryType === 'INCOME' ? (
+                                        {editingDebtAdd ? (
+                                            <>
+                                                <span className="text-sm font-semibold text-rose-700">รายการเพิ่มยอดหนี้</span>
+                                                <span className="text-[13px] leading-[18px] text-slate-700">
+                                                    ติดหนี้ <b className="font-semibold">{editingItem.debtName || '-'}</b> เพิ่ม
+                                                    {' '}· บันทึกที่มาของหนี้ ไม่นับเป็นรายรับ/รายจ่าย
+                                                    {editingItem.debtLocked
+                                                        ? ' แก้ไขหรือลบได้ที่หน้าติดตามหนี้ เพื่อให้ยอดหนี้ตรงกัน'
+                                                        : ' (รายการหนี้นี้ถูกลบไปแล้ว)'}
+                                                </span>
+                                            </>
+                                        ) : editingItem.categoryType === 'INCOME' ? (
                                             <>
                                                 <span className="text-sm font-semibold text-rose-700">รายรับเงินคืนจากบิลหาร</span>
                                                 <span className="text-[13px] leading-[18px] text-slate-700">
@@ -889,7 +902,14 @@ const HistoryPage = ({ onNavigate, onOpenSavings, onOpenDebt }) => {
                                 >
                                     ปิด
                                 </button>
-                                {editingFromDebt || editingFromBill ? (
+                                {editingDebtAdd && !editingItem.debtLocked ? (
+                                <button
+                                    onClick={() => setConfirmIds([editingItem.id])}
+                                    className="flex-1 h-12 rounded-xl bg-expense-50 text-expense-700 text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-expense-100"
+                                >
+                                    <Trash2 size={18} /> ลบรายการ
+                                </button>
+                                ) : editingFromDebt || editingFromBill ? (
                                 <button
                                     onClick={() => onOpenDebt && onOpenDebt(editingItem.debtId ?? null, editingItem.debtGroupId ?? editingItem.billGroupId ?? null)}
                                     className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2"

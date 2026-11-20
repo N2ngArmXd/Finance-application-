@@ -42,6 +42,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             + "(SELECT p.debtPaymentId FROM DebtPayment p, Debt d WHERE d.debtId = p.debtId AND d.isDeleted = false)")
     long countLockedDebtPayments(@Param("ids") List<Long> ids);
 
+    // จำนวนรายการเพิ่มยอดหนี้ที่หนี้ยังอยู่ (กันลบจากหน้าประวัติ ให้ไปจัดการที่หน้าติดตามหนี้)
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.id IN :ids AND t.debtIncreaseId IN "
+            + "(SELECT i.debtIncreaseId FROM DebtIncrease i, Debt d WHERE d.debtId = i.debtId AND d.isDeleted = false)")
+    long countDebtIncreases(@Param("ids") List<Long> ids);
+
     // Get list Transaction
     @Query("SELECT t FROM Transaction t " +
             "JOIN FETCH t.categoryId c " +

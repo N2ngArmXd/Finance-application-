@@ -28,6 +28,7 @@ import com.example.finance_app.entity.Transaction;
 import com.example.finance_app.entity.Users;
 import com.example.finance_app.repository.CategoriesRepository;
 import com.example.finance_app.repository.DebtGroupRepository;
+import com.example.finance_app.repository.DebtIncreaseRepository;
 import com.example.finance_app.repository.DebtPaymentRepository;
 import com.example.finance_app.repository.SavingsMovementRepository;
 import com.example.finance_app.repository.TransactionRepository;
@@ -50,6 +51,8 @@ public class TransactionService {
     private DebtPaymentRepository debtPaymentRepository;
     @Autowired
     private DebtGroupRepository debtGroupRepository;
+    @Autowired
+    private DebtIncreaseRepository debtIncreaseRepository;
 
     // Create Transaction
     public Transaction createTransaction(TransactionRequest request) {
@@ -183,6 +186,18 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    // สร้างรายการหมวด "เพิ่มยอดหนี้" (DEBT_ADD) ตอนกดเพิ่มยอดหนี้ — ไม่นับเป็นรายรับ/รายจ่าย แค่บันทึกที่มา
+    public Transaction createDebtIncrease(Long userId, Long debtIncreaseId, BigDecimal amount,
+            LocalDateTime date, String description) {
+        Categories category = categoriesRepository
+                .findActiveByNameAndType(DefaultCategoryInitializer.DEBT_ADD_CATEGORY_NAME,
+                        DefaultCategoryInitializer.DEBT_ADD)
+                .orElseThrow(() -> new IllegalArgumentException("ไม่พบหมวดหมู่เพิ่มยอดหนี้"));
+        Transaction transaction = newSystemTransaction(userId, category, amount, date, description);
+        transaction.setDebtIncreaseId(debtIncreaseId);
+        return transactionRepository.save(transaction);
+    }
+
     // สร้างรายจ่ายตามหมวดที่เลือก (เช่น ยอดเต็มของบิลหาร) — แก้/ลบที่หน้าประวัติได้ตามปกติ
     public Transaction createLinkedExpense(Long userId, Long categoryId, BigDecimal amount,
             LocalDateTime date, String description) {
@@ -261,6 +276,11 @@ public class TransactionService {
                 && transactionRepository.countLockedDebtPayments(List.of(t.getId())) > 0) {
             throw new RuntimeException("รายการนี้มาจากการชำระหนี้ แก้ไขหรือลบได้ที่หน้าติดตามหนี้");
         }
+        // รายการเพิ่มยอดหนี้ — หนี้ยังอยู่ต้องจัดการที่หน้าติดตามหนี้ (หนี้ที่ลบแล้วลบที่นี่ได้)
+        if (t.getDebtIncreaseId() != null
+                && transactionRepository.countDebtIncreases(List.of(t.getId())) > 0) {
+            throw new RuntimeException("รายการนี้มาจากการเพิ่มยอดหนี้ แก้ไขหรือลบได้ที่หน้าติดตามหนี้");
+        }
         // รายจ่ายยอดเต็มของบิลหาร — แก้ที่บิล (ยอดบิล/หมวด/วันที่) ไม่งั้นบิลกับรายจ่ายจะไม่ตรงกัน
         if (debtGroupRepository.countActiveByTransactionIds(List.of(t.getId())) > 0) {
             throw new RuntimeException("รายการนี้เป็นรายจ่ายของบิลหาร แก้ไขได้ที่หน้าติดตามหนี้ (เขาติดหนี้เรา)");
@@ -268,11 +288,12 @@ public class TransactionService {
     }
 
     // id = [ประเภท 1 หลัก][DDMMYY 6 หลัก][สุ่ม 7 หลัก] เช่น 2 140926 1234567
-    // ประเภท: INCOME=1, EXPENSE=2, SAVING_IN (ฝากเงินออม)=3, SAVING_OUT (ถอนเงินออม)=4
+    // ประเภท: INCOME=1, EXPENSE=2, SAVING_IN (ฝากเงินออม)=3, SAVING_OUT (ถอนเงินออม)=4, DEBT_ADD (เพิ่มยอดหนี้)=5
     private Long generateUniqueTransactionId(String categoryType, LocalDateTime date) {
         long typeDigit = "INCOME".equalsIgnoreCase(categoryType) ? 1L
                 : DefaultCategoryInitializer.SAVING_IN.equalsIgnoreCase(categoryType) ? 3L
                 : DefaultCategoryInitializer.SAVING_OUT.equalsIgnoreCase(categoryType) ? 4L
+                : DefaultCategoryInitializer.DEBT_ADD.equalsIgnoreCase(categoryType) ? 5L
                 : 2L;
         long ddmmyy = date.getDayOfMonth() * 10000L
                 + date.getMonthValue() * 100L
@@ -386,6 +407,7 @@ public class TransactionService {
     // เติมชื่อเจ้าหนี้ให้รายจ่ายที่มาจากการชำระหนี้ (query เดียวต่อชุด)
     private void fillDebtNames(List<TransactionListResponse> rows) {
         fillBillNames(rows);
+        fillDebtIncreaseNames(rows);
         Set<Long> paymentIds = rows.stream()
                 .map(TransactionListResponse::getDebtPaymentId)
                 .filter(Objects::nonNull)
@@ -408,6 +430,34 @@ public class TransactionService {
         }
     }
 
+    // เติมชื่อเจ้าหนี้ให้รายการเพิ่มยอดหนี้ — ล็อกเมื่อหนี้ยังอยู่ (หนี้ที่ลบแล้ว ลบรายการนี้จากหน้าประวัติได้)
+    private void fillDebtIncreaseNames(List<TransactionListResponse> rows) {
+        Set<Long> ids = rows.stream()
+                .map(TransactionListResponse::getDebtIncreaseId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (ids.isEmpty()) {
+            return;
+        }
+        Map<Long, Object[]> byIncrease = new HashMap<>();
+        for (Object[] row : debtIncreaseRepository.findDebtNames(ids)) {
+            byIncrease.put((Long) row[0], row);
+        }
+        for (TransactionListResponse r : rows) {
+            if (r.getDebtIncreaseId() == null) {
+                continue;
+            }
+            Object[] row = byIncrease.get(r.getDebtIncreaseId());
+            if (row != null) {
+                boolean debtDeleted = Boolean.TRUE.equals(row[3]);
+                // หนี้ถูกลบไปแล้ว = ไม่มีที่ให้เปิด (ไม่ส่ง debtId)
+                r.setDebtId(debtDeleted ? null : (Long) row[1]);
+                r.setDebtName((String) row[2]);
+                r.setDebtLocked(!debtDeleted);
+            }
+        }
+    }
+
     // แปลง Transaction entity -> DTO (ใช้ร่วมกันหลายที่)
     private TransactionListResponse toListResponse(Transaction t) {
         TransactionListResponse response = new TransactionListResponse();
@@ -417,6 +467,7 @@ public class TransactionService {
         response.setTransactionDate(t.getTransactionDate());
         response.setSavingsMovementId(t.getSavingsMovementId());
         response.setDebtPaymentId(t.getDebtPaymentId());
+        response.setDebtIncreaseId(t.getDebtIncreaseId());
 
         if (t.getCategoryId() != null) {
             response.setCategoryId(t.getCategoryId().getId());
@@ -517,6 +568,9 @@ public class TransactionService {
         }
         if (transactionRepository.countLockedDebtPayments(ids) > 0) {
             throw new RuntimeException("มีรายการที่มาจากการชำระหนี้ ลบได้ที่หน้าติดตามหนี้เท่านั้น");
+        }
+        if (transactionRepository.countDebtIncreases(ids) > 0) {
+            throw new RuntimeException("มีรายการเพิ่มยอดหนี้ ลบได้ที่หน้าติดตามหนี้เท่านั้น");
         }
         if (debtGroupRepository.countActiveByTransactionIds(ids) > 0) {
             throw new RuntimeException("มีรายจ่ายของบิลหาร ลบได้ที่หน้าติดตามหนี้เท่านั้น");

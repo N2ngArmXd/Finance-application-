@@ -28,6 +28,16 @@ public class TransactionListResponse {
     private String debtName;
     private boolean debtLocked;
     private Long debtGroupId; // รายรับเงินคืนจากบิลหาร -> เปิดบิลนั้นได้
+    // รายการ "เพิ่มยอดหนี้" (null = ไม่ใช่) — debtId/debtName/debtLocked ใช้ช่องเดียวกับการชำระ
+    private Long debtIncreaseId;
+
+    public Long getDebtIncreaseId() {
+        return debtIncreaseId;
+    }
+
+    public void setDebtIncreaseId(Long debtIncreaseId) {
+        this.debtIncreaseId = debtIncreaseId;
+    }
 
     // รายจ่ายยอดเต็มของบิลหาร (null = ไม่ใช่) — หน้าประวัติแสดงป้าย + ลิงก์ไปบิล และห้ามแก้/ลบ
     private Long billGroupId;

@@ -26,7 +26,7 @@ export default function TxnRow({
         ? item.savingsGoalName || 'เงินออม'
         : `จากเงินออม${item.savingsGoalName ? ` · ${item.savingsGoalName}` : ''}`;
     // รายจ่ายชำระหนี้ (หนี้ยังอยู่) — จัดการที่หน้าติดตามหนี้
-    const fromDebt = item.debtPaymentId != null && item.debtName != null;
+    const fromDebt = (item.debtPaymentId != null || item.debtIncreaseId != null) && item.debtName != null;
     // รายจ่ายยอดเต็มของบิลหาร (บิลยังอยู่) — จัดการที่บิล
     const fromBill = item.billGroupId != null;
     const selectable = table && !fromSavings && !item.debtLocked && !fromBill;

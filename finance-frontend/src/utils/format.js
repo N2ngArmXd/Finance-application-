@@ -18,9 +18,12 @@ const TXN_TONES = {
     EXPENSE: { sign: '−', color: 'text-expense-600' },
     SAVING_IN: { sign: '−', color: 'text-brand-600' },
     SAVING_OUT: { sign: '+', color: 'text-slate-700' },
+    // เพิ่มยอดหนี้ = บันทึกที่มาของหนี้ ไม่ใช่เงินเข้า/ออก (ไม่มีเครื่องหมาย ไม่นับในยอดสุทธิ)
+    DEBT_ADD: { sign: '', color: 'text-rose-600' },
 };
 export const txnTone = (categoryType) => TXN_TONES[categoryType] || TXN_TONES.EXPENSE;
 export const isSavingType = (categoryType) => categoryType === 'SAVING_IN' || categoryType === 'SAVING_OUT';
+export const isDebtAddType = (categoryType) => categoryType === 'DEBT_ADD';
 
 // ยอดแบบมีเครื่องหมาย เช่น +1,250.00 / −120.00 (ศูนย์ไม่มีเครื่องหมาย)
 export const formatSigned = (n, withBaht = false) => {

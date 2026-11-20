@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { X, Pencil, Trash2, History, CloudOff, HandCoins } from 'lucide-react';
+import { X, Pencil, Trash2, History, CloudOff, HandCoins, BadgePlus } from 'lucide-react';
 import { formatMoney, formatDayLabel, formatTime, formatShortDate } from '../../utils/format';
 import { CategoryAvatar } from '../../utils/categoryIcons';
 import { debtApi } from '../../utils/debtApi';
@@ -7,9 +7,12 @@ import { debtStatusLine } from '../../utils/debtTheme';
 
 const money = (n) => `฿${formatMoney(n)}`;
 
-// drawer รายละเอียดหนี้ + ประวัติการชำระ
+// drawer รายละเอียดหนี้ + ประวัติ (การชำระ + การเพิ่มยอดหนี้ เรียงรวมกันตามวันที่)
 // reloadKey เปลี่ยน = โหลดประวัติใหม่ (หลังจ่าย/แก้/ลบ) · paused = มี modal/dialog ซ้อนอยู่
-export default function DebtDetail({ debt, reloadKey, paused, onClose, onPay, onEditPayment, onDeletePayment }) {
+export default function DebtDetail({
+    debt, reloadKey, paused, onClose, onPay, onEditPayment, onDeletePayment,
+    onIncrease, onEditIncrease, onDeleteIncrease,
+}) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -18,7 +21,15 @@ export default function DebtDetail({ debt, reloadKey, paused, onClose, onPay, on
         setLoading(true);
         setError(false);
         try {
-            setItems(await debtApi('payments', { debtId: debt.debtId }) || []);
+            const [payments, increases] = await Promise.all([
+                debtApi('payments', { debtId: debt.debtId }),
+                debtApi('increases', { debtId: debt.debtId }),
+            ]);
+            const merged = [
+                ...(payments || []).map((p) => ({ kind: 'payment', key: `p-${p.debtPaymentId}`, date: p.paymentDate, data: p })),
+                ...(increases || []).map((i) => ({ kind: 'increase', key: `i-${i.debtIncreaseId}`, date: i.increaseDate, data: i })),
+            ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            setItems(merged);
         } catch {
             setError(true);
         } finally {
@@ -74,7 +85,7 @@ export default function DebtDetail({ debt, reloadKey, paused, onClose, onPay, on
 
                 <div className="flex-1 overflow-y-auto">
                     <div className="h-10 px-4 sm:px-6 flex items-center gap-1.5 bg-slate-50 border-b border-slate-100 text-[13px] font-semibold text-slate-600">
-                        <History size={14} /> ประวัติการชำระ
+                        <History size={14} /> ประวัติหนี้
                         <span className="flex-1" />
                         <span className="font-normal tabular-nums">จ่ายแล้ว {money(debt.paidAmount)}</span>
                     </div>
@@ -97,38 +108,48 @@ export default function DebtDetail({ debt, reloadKey, paused, onClose, onPay, on
                         </div>
                     ) : items.length === 0 ? (
                         <div className="py-10 px-6 flex flex-col items-center gap-1 text-center">
-                            <span className="text-sm font-semibold text-slate-800">ยังไม่มีการชำระ</span>
+                            <span className="text-sm font-semibold text-slate-800">ยังไม่มีประวัติ</span>
                             <span className="text-[13px] text-slate-500">กด "ชำระเงิน" เมื่อจ่ายคืน ระบบจะลงรายจ่ายให้อัตโนมัติ</span>
                         </div>
                     ) : (
-                        items.map((p) => (
-                            <div key={p.debtPaymentId} className="group min-h-16 pl-4 pr-2 sm:px-6 py-2.5 flex items-center gap-3 border-b border-slate-100">
-                                <span className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center bg-expense-50 text-expense-600">
-                                    <HandCoins size={17} />
-                                </span>
-                                <div className="flex-1 min-w-0 flex flex-col">
-                                    <span className="text-sm font-medium text-slate-800 truncate">{p.note || 'ชำระหนี้'}</span>
-                                    <span className="text-xs text-slate-500 truncate">
-                                        {formatDayLabel(p.paymentDate)} · {formatTime(p.paymentDate)}
+                        items.map(({ kind, key, date, data }) => {
+                            const isInc = kind === 'increase';
+                            return (
+                                <div key={key} className="group min-h-16 pl-4 pr-2 sm:px-6 py-2.5 flex items-center gap-3 border-b border-slate-100">
+                                    <span className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center ${isInc ? 'bg-rose-50 text-rose-600' : 'bg-expense-50 text-expense-600'}`}>
+                                        {isInc ? <BadgePlus size={17} /> : <HandCoins size={17} />}
                                     </span>
+                                    <div className="flex-1 min-w-0 flex flex-col">
+                                        <span className="text-sm font-medium text-slate-800 truncate">
+                                            {isInc ? `เพิ่มยอดหนี้ · ${data.note}` : (data.note || 'ชำระหนี้')}
+                                        </span>
+                                        <span className="text-xs text-slate-500 truncate">
+                                            {formatDayLabel(date)} · {formatTime(date)}
+                                        </span>
+                                    </div>
+                                    <span className={`shrink-0 text-[15px] font-semibold tabular-nums ${isInc ? 'text-rose-600' : 'text-expense-600'}`}>
+                                        {isInc ? '+' : '−'}{formatMoney(data.amount)}
+                                    </span>
+                                    <div className="shrink-0 flex opacity-60 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => (isInc ? onEditIncrease(data) : onEditPayment(data))} aria-label="แก้ไขรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100">
+                                            <Pencil size={15} />
+                                        </button>
+                                        <button onClick={() => (isInc ? onDeleteIncrease(data) : onDeletePayment(data))} aria-label="ลบรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-expense-700 hover:bg-expense-50">
+                                            <Trash2 size={15} />
+                                        </button>
+                                    </div>
                                 </div>
-                                <span className="shrink-0 text-[15px] font-semibold tabular-nums text-expense-600">−{formatMoney(p.amount)}</span>
-                                <div className="shrink-0 flex opacity-60 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => onEditPayment(p)} aria-label="แก้ไขรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-100">
-                                        <Pencil size={15} />
-                                    </button>
-                                    <button onClick={() => onDeletePayment(p)} aria-label="ลบรายการ" className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-expense-700 hover:bg-expense-50">
-                                        <Trash2 size={15} />
-                                    </button>
-                                </div>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
 
                 {!paid && (
-                    <div className="shrink-0 px-4 sm:px-6 py-4 border-t border-slate-200">
-                        <button onClick={onPay} className="w-full h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2">
+                    <div className="shrink-0 px-4 sm:px-6 py-4 border-t border-slate-200 flex gap-3">
+                        <button onClick={onIncrease} className="flex-1 h-12 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[15px] font-semibold flex items-center justify-center gap-2">
+                            <BadgePlus size={18} className="text-rose-600" /> เพิ่มยอดหนี้
+                        </button>
+                        <button onClick={onPay} className="flex-1 h-12 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-[15px] font-semibold flex items-center justify-center gap-2">
                             <HandCoins size={18} /> ชำระเงิน
                         </button>
                     </div>
