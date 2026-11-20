@@ -57,4 +57,9 @@ public class Transaction {
     @Column(name = "debt_payment_id")
     private Long debtPaymentId;
 
+    // รายการหมวด "เพิ่มยอดหนี้" ที่ระบบสร้างตอนกดเพิ่มยอดหนี้ ลิงก์กลับไปที่รายการเพิ่มยอด
+    // แก้ไข/ลบได้ที่หน้าติดตามหนี้ (ไม่นับเป็นรายรับ/รายจ่าย)
+    @Column(name = "debt_increase_id")
+    private Long debtIncreaseId;
+
 }

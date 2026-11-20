@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.finance_app.dto.request.BillRequest;
+import com.example.finance_app.dto.request.DebtIncreaseRequest;
 import com.example.finance_app.dto.request.DebtPaymentRequest;
 import com.example.finance_app.dto.request.DebtRequest;
 import com.example.finance_app.security.CurrentUser;
@@ -84,6 +85,35 @@ public class DebtController {
         return handle(() -> {
             debtService.deletePayment(req);
             return "ลบรายการชำระเรียบร้อยแล้ว";
+        });
+    }
+
+    // ---------- เพิ่มยอดหนี้ (ติดหนี้เพิ่ม) -> สร้างรายการหมวด "เพิ่มยอดหนี้" ในประวัติ (ไม่นับเป็นรายรับ/รายจ่าย) ----------
+
+    @PostMapping("/debts/increases")
+    public ResponseEntity<?> listIncreases(@RequestBody DebtIncreaseRequest req, @CurrentUser Long userId) {
+        req.setUserId(userId);
+        return handle(() -> debtService.listIncreases(req));
+    }
+
+    @PostMapping("/debts/increase")
+    public ResponseEntity<?> increase(@RequestBody DebtIncreaseRequest req, @CurrentUser Long userId) {
+        req.setUserId(userId);
+        return handle(() -> debtService.increase(req));
+    }
+
+    @PostMapping("/debts/increase/update")
+    public ResponseEntity<?> updateIncrease(@RequestBody DebtIncreaseRequest req, @CurrentUser Long userId) {
+        req.setUserId(userId);
+        return handle(() -> debtService.updateIncrease(req));
+    }
+
+    @PostMapping("/debts/increase/delete")
+    public ResponseEntity<?> deleteIncrease(@RequestBody DebtIncreaseRequest req, @CurrentUser Long userId) {
+        req.setUserId(userId);
+        return handle(() -> {
+            debtService.deleteIncrease(req);
+            return "ลบรายการเพิ่มยอดหนี้เรียบร้อยแล้ว";
         });
     }
 

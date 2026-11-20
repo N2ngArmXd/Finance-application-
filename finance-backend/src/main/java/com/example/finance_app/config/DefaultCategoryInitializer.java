@@ -3,8 +3,12 @@ package com.example.finance_app.config;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import com.example.finance_app.entity.Categories;
@@ -21,6 +25,7 @@ import com.example.finance_app.repository.CategoriesRepository;
 public class DefaultCategoryInitializer implements CommandLineRunner {
 
     private final CategoriesRepository categoriesRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     // หมวดที่ใช้กับรายจ่ายที่สร้างอัตโนมัติตอนกดจ่ายงวดผ่อน — ดู InstallmentService.updatePaidPeriod
     public static final String INSTALLMENT_CATEGORY_NAME = "ค่างวด-ผ่อนชำระ";
@@ -37,6 +42,11 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
     public static final String SAVING_OUT = "SAVING_OUT";
     public static final String SAVING_IN_CATEGORY_NAME = "ฝากเงินออม";
     public static final String SAVING_OUT_CATEGORY_NAME = "ถอนเงินออม";
+
+    // ประเภทหมวดของการ "เพิ่มยอดหนี้" — บันทึกที่มาของหนี้ในประวัติ ไม่ใช่รายรับ/รายจ่าย (ไม่นับในยอดใดๆ)
+    // ดู DebtService.increase
+    public static final String DEBT_ADD = "DEBT_ADD";
+    public static final String DEBT_ADD_CATEGORY_NAME = "เพิ่มยอดหนี้";
 
     // {name, type, icon} — icon เก็บเป็น "ชื่อไอคอน lucide" (map เป็น component ฝั่งหน้าเว็บ)
     private static final String[][] DEFAULTS = {
@@ -64,18 +74,39 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "อื่นๆ", "INCOME", "Circle" },
             { SAVING_IN_CATEGORY_NAME, SAVING_IN, "PiggyBank" },
             { SAVING_OUT_CATEGORY_NAME, SAVING_OUT, "ArrowUpFromLine" },
+            { DEBT_ADD_CATEGORY_NAME, DEBT_ADD, "BadgePlus" },
     };
 
     private static String key(String name, String type) {
         return name + "|" + type;
     }
 
-    public DefaultCategoryInitializer(CategoriesRepository categoriesRepository) {
+    public DefaultCategoryInitializer(CategoriesRepository categoriesRepository, JdbcTemplate jdbcTemplate) {
         this.categoriesRepository = categoriesRepository;
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    // DB มี check constraint categories_type_check จำกัดค่า type ไว้ (สร้างนอกโค้ด)
+    // สร้างใหม่ให้ครอบทุกประเภทใน DEFAULTS + ประเภทที่มีอยู่แล้วในตาราง (เพิ่มประเภทใหม่ เช่น DEBT_ADD ได้)
+    private void ensureTypeConstraint() {
+        Set<String> types = new TreeSet<>();
+        for (String[] d : DEFAULTS) {
+            types.add(d[1]);
+        }
+        types.addAll(jdbcTemplate.queryForList(
+                "SELECT DISTINCT type FROM \"finance-app\".categories WHERE type IS NOT NULL", String.class));
+        String allowed = types.stream()
+                .map(t -> "'" + t.replace("'", "''") + "'")
+                .collect(Collectors.joining(", "));
+        jdbcTemplate.execute("ALTER TABLE \"finance-app\".categories DROP CONSTRAINT IF EXISTS categories_type_check");
+        jdbcTemplate.execute("ALTER TABLE \"finance-app\".categories ADD CONSTRAINT categories_type_check "
+                + "CHECK (type IN (" + allowed + "))");
     }
 
     @Override
     public void run(String... args) {
+        ensureTypeConstraint();
+
         Map<String, String> canonical = new LinkedHashMap<>();
         for (String[] d : DEFAULTS) {
             canonical.put(key(d[0], d[1]), d[2]);
