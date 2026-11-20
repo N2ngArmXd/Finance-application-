@@ -22,10 +22,12 @@ import {
     RotateCcw,
     Gamepad2,
     Users,
+    BadgePlus,
 } from 'lucide-react';
 
 // map ชื่อไอคอน (เก็บใน DB) -> component ของ lucide-react
 const ICON_MAP = {
+    BadgePlus,
     Users,
     Gamepad2,
     HandCoins,
@@ -53,6 +55,7 @@ const ICON_MAP = {
 
 // สีประจำแต่ละไอคอน (โทนใกล้เคียง emoji เดิม)
 const COLOR_MAP = {
+    BadgePlus: 'text-rose-600',
     Users: 'text-orange-600',
     Gamepad2: 'text-fuchsia-600',
     Smartphone: 'text-cyan-600',
@@ -80,6 +83,7 @@ const COLOR_MAP = {
 
 // พื้นวงกลมอ่อน (-50) คู่กับสีไอคอน ใช้กับ CategoryAvatar
 const SOFT_MAP = {
+    BadgePlus: 'bg-rose-50',
     Users: 'bg-orange-50',
     Gamepad2: 'bg-fuchsia-50',
     Smartphone: 'bg-cyan-50',

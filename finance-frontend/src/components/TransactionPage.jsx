@@ -256,7 +256,11 @@ export default function TransactionPage({ onNavigate }) {
         () =>
             todayItems.reduce(
                 // ฝากเงินออมหักออก / ถอนเงินออมบวกกลับ เหมือนสุทธิในหน้าประวัติ
-                (sum, t) => sum + (txnTone(t.categoryType).sign === '+' ? Number(t.amount) : -Number(t.amount)),
+                // เพิ่มยอดหนี้ (ไม่มีเครื่องหมาย) ไม่นับ
+                (sum, t) => {
+                    const sign = txnTone(t.categoryType).sign;
+                    return sum + (sign === '+' ? Number(t.amount) : sign === '' ? 0 : -Number(t.amount));
+                },
                 0
             ),
         [todayItems]

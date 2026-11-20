@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Plus, HandCoins, ChevronDown, ChevronUp, Trash2, Pencil, Receipt, TriangleAlert, Info, Users } from 'lucide-react';
+import { Plus, HandCoins, ChevronDown, ChevronUp, Trash2, Pencil, Receipt, TriangleAlert, Info, Users, BadgePlus } from 'lucide-react';
 import { formatMoney, formatShortDate, toDateInput } from '../utils/format';
 import { debtApi } from '../utils/debtApi';
 import { toMovementDateTime } from '../utils/savingsApi';
@@ -7,6 +7,7 @@ import { CategoryAvatar } from '../utils/categoryIcons';
 import DebtCard from './debts/DebtCard';
 import DebtForm from './debts/DebtForm';
 import PaymentForm from './debts/PaymentForm';
+import IncreaseForm from './debts/IncreaseForm';
 import DebtDetail from './debts/DebtDetail';
 import BillSplit from './debts/BillSplit';
 import ConfirmDialog from './ui/ConfirmDialog';
@@ -50,6 +51,42 @@ const dialogProps = (d) => {
             confirmLabel: 'ชำระเงิน', busyLabel: 'กำลังบันทึก…',
         };
     }
+    if (d.kind === 'increase') {
+        const amount = parseFloat(d.values.amount);
+        const delta = amount - (d.increase ? d.increase.amount : 0);
+        const rows = [
+            { k: 'ติดหนี้', v: debt.creditorName },
+            { k: 'ยอดที่เพิ่ม', v: money(amount) },
+            { k: 'ที่มา', v: d.values.note.trim() },
+            { k: 'วันที่', v: formatShortDate(d.values.date) },
+            { k: 'ยอดหนี้ทั้งหมดหลังเพิ่ม', v: money(debt.totalAmount + delta) },
+        ];
+        return d.increase
+            ? {
+                tone: 'brand', icon: Pencil, title: 'บันทึกการแก้ไขรายการเพิ่มยอดหนี้?', rows,
+                note: 'รายการในประวัติธุรกรรมจะถูกแก้ตามไปด้วย', noteIcon: Receipt,
+                confirmLabel: 'บันทึก', busyLabel: 'กำลังบันทึก…',
+            }
+            : {
+                tone: 'brand', icon: BadgePlus, title: 'ยืนยันการเพิ่มยอดหนี้?', rows,
+                note: 'จะบันทึกรายการ "เพิ่มยอดหนี้" ในประวัติธุรกรรม · ไม่นับเป็นรายรับ/รายจ่าย', noteIcon: Receipt,
+                confirmLabel: 'เพิ่มยอดหนี้', busyLabel: 'กำลังบันทึก…',
+            };
+    }
+    if (d.kind === 'deleteIncrease') {
+        const inc = d.increase;
+        return {
+            tone: 'danger', icon: Trash2, title: 'ลบรายการเพิ่มยอดหนี้นี้?', text: `ยอดหนี้จะลดลง ${money(inc.amount)}`,
+            rows: [
+                { k: 'ติดหนี้', v: debt.creditorName },
+                { k: 'ยอดที่เพิ่ม', v: money(inc.amount) },
+                { k: 'ที่มา', v: inc.note },
+                { k: 'วันที่', v: formatShortDate(new Date(inc.increaseDate)) },
+            ],
+            note: 'จะลบรายการเพิ่มยอดหนี้ในประวัติธุรกรรมด้วย', noteTone: 'warn', noteIcon: TriangleAlert,
+            confirmLabel: 'ลบ', busyLabel: 'กำลังลบ…',
+        };
+    }
     if (d.kind === 'deletePayment') {
         const p = d.payment;
         return {
@@ -87,6 +124,7 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
 
     const [debtForm, setDebtForm] = useState(null);       // { mode, debt?, initial }
     const [paymentForm, setPaymentForm] = useState(null); // { debtId, payment? }
+    const [increaseForm, setIncreaseForm] = useState(null); // { debtId, increase? }
     const [detailId, setDetailId] = useState(null);
     const [historyKey, setHistoryKey] = useState(0);
     const [dialog, setDialog] = useState(null);
@@ -125,6 +163,7 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
     const debtById = (id) => debts.find((d) => d.debtId === id);
     const detailDebt = detailId != null ? debtById(detailId) : null;
     const paymentDebt = paymentForm ? debtById(paymentForm.debtId) : null;
+    const increaseDebt = increaseForm ? debtById(increaseForm.debtId) : null;
 
     // เปิดหนี้ที่ส่งมาจากหน้าอื่น (ประวัติธุรกรรม)
     useEffect(() => {
@@ -206,6 +245,28 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
             : `ชำระ ${money(amount)} และเพิ่มรายจ่ายในประวัติธุรกรรมแล้ว`;
     };
 
+    // ---------- เพิ่มยอดหนี้ ----------
+    const openIncrease = (d, increase = null) => setIncreaseForm({ debtId: d.debtId, increase });
+    const submitIncrease = (values) => setDialog({ kind: 'increase', debt: increaseDebt, increase: increaseForm.increase, values });
+
+    const runIncrease = async (d) => {
+        const { values, increase } = d;
+        const amount = parseFloat(values.amount);
+        const note = values.note.trim();
+        if (increase) {
+            const sameDay = toDateInput(new Date(increase.increaseDate)) === values.date;
+            await debtApi('increase/update', {
+                debtIncreaseId: increase.debtIncreaseId,
+                amount,
+                increaseDate: sameDay ? increase.increaseDate : toMovementDateTime(values.date, increase.increaseDate.slice(11, 19)),
+                note,
+            });
+            return 'บันทึกการแก้ไขรายการเพิ่มยอดหนี้แล้ว';
+        }
+        await debtApi('increase', { debtId: d.debt.debtId, amount, increaseDate: toMovementDateTime(values.date), note });
+        return `เพิ่มยอดหนี้ "${d.debt.creditorName}" ${money(amount)} แล้ว`;
+    };
+
     const confirmDialog = async () => {
         const d = dialog;
         if (!d) return;
@@ -215,6 +276,12 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
             if (d.kind === 'payment') {
                 message = await runPayment(d);
                 setPaymentForm(null);
+            } else if (d.kind === 'increase') {
+                message = await runIncrease(d);
+                setIncreaseForm(null);
+            } else if (d.kind === 'deleteIncrease') {
+                await debtApi('increase/delete', { debtIncreaseId: d.increase.debtIncreaseId });
+                message = 'ลบรายการเพิ่มยอดหนี้แล้ว';
             } else if (d.kind === 'deletePayment') {
                 await debtApi('payment/delete', { debtPaymentId: d.payment.debtPaymentId });
                 message = 'ลบรายการชำระและรายจ่ายที่ผูกอยู่แล้ว';
@@ -236,6 +303,7 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
     const cancelDialog = useCallback(() => setDialog(null), []);
     const closeDebtForm = useCallback(() => setDebtForm(null), []);
     const closePaymentForm = useCallback(() => setPaymentForm(null), []);
+    const closeIncreaseForm = useCallback(() => setIncreaseForm(null), []);
     const closeDetail = useCallback(() => setDetailId(null), []);
     const dlg = dialogProps(dialog);
 
@@ -349,6 +417,7 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
                                     highlight={highlightId === d.debtId}
                                     onOpen={() => { setHighlightId(null); setDetailId(d.debtId); }}
                                     onPay={() => openPayment(d)}
+                                    onIncrease={() => openIncrease(d)}
                                     onEdit={() => openEdit(d)}
                                     onDelete={() => setDialog({ kind: 'deleteDebt', debt: d })}
                                 />
@@ -402,11 +471,14 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
                 <DebtDetail
                     debt={detailDebt}
                     reloadKey={historyKey}
-                    paused={!!dialog || !!paymentForm}
+                    paused={!!dialog || !!paymentForm || !!increaseForm}
                     onClose={closeDetail}
                     onPay={() => openPayment(detailDebt)}
                     onEditPayment={(p) => openPayment(detailDebt, p)}
                     onDeletePayment={(p) => setDialog({ kind: 'deletePayment', debt: detailDebt, payment: p })}
+                    onIncrease={() => openIncrease(detailDebt)}
+                    onEditIncrease={(i) => openIncrease(detailDebt, i)}
+                    onDeleteIncrease={(i) => setDialog({ kind: 'deleteIncrease', debt: detailDebt, increase: i })}
                 />
             )}
 
@@ -431,6 +503,17 @@ export default function Debts({ focusId, focusGroupId, onFocusHandled }) {
                     paused={!!dialog}
                     onCancel={closePaymentForm}
                     onSubmit={submitPayment}
+                />
+            )}
+
+            {increaseForm && increaseDebt && (
+                <IncreaseForm
+                    key={`inc-${increaseForm.increase?.debtIncreaseId ?? 'new'}`}
+                    debt={increaseDebt}
+                    increase={increaseForm.increase}
+                    paused={!!dialog}
+                    onCancel={closeIncreaseForm}
+                    onSubmit={submitIncrease}
                 />
             )}
 

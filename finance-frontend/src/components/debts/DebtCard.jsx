@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Ellipsis, Pencil, Trash2, HandCoins, History, LayoutDashboard } from 'lucide-react';
+import { Ellipsis, Pencil, Trash2, HandCoins, History, LayoutDashboard, BadgePlus } from 'lucide-react';
 import { formatMoney } from '../../utils/format';
 import { CategoryAvatar } from '../../utils/categoryIcons';
 import { debtStatusLine } from '../../utils/debtTheme';
 
 const money = (n) => `฿${formatMoney(n)}`;
 
-export default function DebtCard({ debt, highlight, onOpen, onPay, onEdit, onDelete }) {
+export default function DebtCard({ debt, highlight, onOpen, onPay, onIncrease, onEdit, onDelete }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -65,7 +65,7 @@ export default function DebtCard({ debt, highlight, onOpen, onPay, onEdit, onDel
                                     <Pencil size={18} /> แก้ไข
                                 </button>
                                 <button type="button" onClick={stop(onOpen)} className="h-10 px-2.5 rounded-lg flex items-center gap-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50">
-                                    <History size={18} /> ประวัติการชำระ
+                                    <History size={18} /> ประวัติหนี้
                                 </button>
                                 <button type="button" onClick={stop(onDelete)} className="h-10 mt-1 px-2.5 rounded-lg border-t border-slate-100 flex items-center gap-2.5 text-sm font-medium text-expense-700 hover:bg-slate-50">
                                     <Trash2 size={18} /> ลบรายการหนี้
@@ -97,11 +97,18 @@ export default function DebtCard({ debt, highlight, onOpen, onPay, onEdit, onDel
             </div>
 
             {debt.status !== 'PAID' && (
-                <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+                <div className="px-4 sm:px-5 pb-4 sm:pb-5 flex gap-2">
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onIncrease(); }}
+                        className="flex-1 h-11 sm:h-10 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold flex items-center justify-center gap-1.5"
+                    >
+                        <BadgePlus size={16} className="text-rose-600" /> เพิ่มยอดหนี้
+                    </button>
                     <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); onPay(); }}
-                        className="w-full h-11 sm:h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
+                        className="flex-1 h-11 sm:h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold flex items-center justify-center gap-1.5"
                     >
                         <HandCoins size={16} /> ชำระเงิน
                     </button>
