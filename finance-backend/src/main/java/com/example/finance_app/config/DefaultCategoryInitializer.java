@@ -53,6 +53,7 @@ public class DefaultCategoryInitializer implements CommandLineRunner {
             { "อาหาร", "EXPENSE", "Utensils" },
             { "เดินทาง", "EXPENSE", "Car" },
             { "ช้อปปิ้ง", "EXPENSE", "ShoppingBag" },
+            { "ช็อปปิ้งออนไลน์", "EXPENSE", "ShoppingCart" },
             { "บ้าน-ที่พัก", "EXPENSE", "Home" },
             { "บิล-ค่าน้ำค่าไฟ", "EXPENSE", "ReceiptText" },
             { "โทรศัพท์-อินเทอร์เน็ต", "EXPENSE", "Smartphone" },
